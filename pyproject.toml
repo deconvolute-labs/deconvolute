@@ -1,0 +1,87 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "deconvolute"
+dynamic = ["version"]
+description = "A defense-in-depth library for RAG input and output scanning and sanitization"
+readme = "README.md"
+requires-python = ">=3.11"
+license = "Apache-2.0"
+authors = [
+  { name = "David Kirchhoff", email = "david@deconvoluteai.com" },
+]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Intended Audience :: Developers",
+  "Topic :: Security",
+  "Topic :: Software Development :: Libraries :: Python Modules",
+  "Topic :: Software Development :: Quality Assurance",
+  "License :: OSI Approved :: Apache Software License",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+]
+dependencies = [
+  "pydantic>=2.0",
+  "pydantic-settings>=2.0", 
+]
+[project.urls]
+Homepage = "https://deconvoluteai.com"
+Issues = "https://github.com/daved01/deconvolute/issues"
+
+
+[project.optional-dependencies]
+ml = [
+  "onnxruntime>=1.16.0",
+]
+
+[dependency-groups]
+dev = [
+  "pytest>=9.0",
+  "pytest-cov>=7.0.0",
+  "ruff>=0.14.0",
+  "mypy>=1.0.0",
+  "git-cliff>=2.11.0",
+]
+
+# --- Tool Configuration ---
+
+[tool.hatch.version]
+path = "src/deconvolute/__init__.py"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/deconvolute"]
+
+[tool.ruff]
+line-length = 88
+target-version = "py311"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "S", "UP"] # pycodestyle, pyflakes, isort, bugbear
+ignore = [
+  "S101", # Ignore "assert" warnings (we use them in pytest)
+]
+
+[tool.ruff.lint.per-file-ignores]
+# Tests often use "magic values" or mock data that look like secrets
+"tests/**/*" = ["S105", "S106", "S101"]
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true  # Force you to write types for every function
+ignore_missing_imports = true # Prevents errors if a 3rd party lib has no types
+
+[[tool.mypy.overrides]]
+module = "tests.*"
+disallow_untyped_defs = false
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+addopts = "-ra -q --cov=deconvolute --cov-report=xml"

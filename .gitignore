@@ -1,0 +1,38 @@
+# --- Python ---
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Tools
+.mypy_cache
+.ruff_cache
+
+# Distribution / Builds
+build/
+dist/
+*.egg-info/
+.eggs/
+*.egg
+
+# --- Virtual Environments ---
+# uv creates .venv by default
+.venv/
+venv/
+env/
+ENV/
+
+# --- macOS ---
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# --- IDEs / Editors ---
+.idea/
+.vscode/
+*.swp
+
+# --- Testing / Coverage ---
+.coverage
+coverage.xml
+htmlcov/
+.pytest_cache/

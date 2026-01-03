@@ -1,0 +1,102 @@
+name: Release to TestPyPI
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to release (e.g. 0.1.0)'
+        required: true
+        type: string
+
+permissions:
+  contents: write  # Needed to push the tag back to the repo
+  id-token: write  # Needed for trusted publishing
+
+jobs:
+  validate-and-release:
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'  # Only runs on main branch
+    environment:
+      name: testpypi
+      url: https://test.pypi.org/p/deconvolute
+    
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0  # Fetch all history to see previous tags
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+
+      - name: Validate Version Input
+        run: |
+          NEW_VERSION="${{ inputs.version }}"
+          
+          # Get the latest tag (e.g. v0.0.9), default to v0.0.0 if none
+          LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
+          LAST_VER=${LAST_TAG#v} # Remove 'v' prefix
+
+          echo "Previous Version: $LAST_VER"
+          echo "Target Version:   $NEW_VERSION"
+
+          # Simple Python script to compare versions
+          python3 -c "
+          from packaging.version import parse
+          import sys
+          
+          old = parse('$LAST_VER')
+          new = parse('$NEW_VERSION')
+          
+          if new <= old:
+              print(f'ERROR: New version {new} must be greater than {old}')
+              sys.exit(1)
+          "
+
+      - name: Verify __init__.py matches
+        run: |
+          # Extract version from file
+          FILE_VERSION=$(grep '__version__' src/deconvolute/__init__.py | cut -d'"' -f2)
+          if [ "$FILE_VERSION" != "${{ inputs.version }}" ]; then
+            echo "ERROR: src/deconvolute/__init__.py says $FILE_VERSION but you requested ${{ inputs.version }}"
+            exit 1
+          fi
+
+      - name: Verify CHANGELOG.md updated
+        run: |
+          # 1. Check if file exists
+          if [ ! -f CHANGELOG.md ]; then
+            echo "ERROR: CHANGELOG.md file not found in the root directory."
+            exit 1
+          fi
+
+          # 2. Check if the version string is present in the file
+          if ! grep -Fq "${{ inputs.version }}" CHANGELOG.md; then
+            echo "ERROR: CHANGELOG.md does not contain version ${{ inputs.version }}."
+            echo "Please run locally: uv run git-cliff --tag ${{ inputs.version }} --output CHANGELOG.md"
+            echo "Then commit and push the changes."
+            exit 1
+          fi
+          echo "SUCCESS: Found version ${{ inputs.version }} in CHANGELOG.md"
+
+      - name: Run Tests & Linters
+        run: |
+          uv sync --all-extras --dev
+          uv run ruff check .
+          uv run mypy .
+          uv run pytest
+
+      - name: Build Package
+        run: uv build
+
+      - name: Publish to TestPyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          repository-url: https://test.pypi.org/legacy/
+          verbose: true
+
+      - name: Create and Push Tag
+        run: |
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+          git tag -a "v${{ inputs.version }}" -m "Release v${{ inputs.version }}"
+          git push origin "v${{ inputs.version }}"
