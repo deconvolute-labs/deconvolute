@@ -6,6 +6,7 @@ class DeconvoluteError(Exception):
 
     pass
 
+
 class ConfigurationError(DeconvoluteError):
     """
     Raised when the SDK is misconfigured or a method is called with invalid arguments.
@@ -14,13 +15,14 @@ class ConfigurationError(DeconvoluteError):
 
     pass
 
+
 class SecurityDetectedError(DeconvoluteError):
     """
     Raised when a security threat is detected.
-    
-    Note: The SDK methods (like scanner.scan() or canary.check()) generally 
-    return a Result object rather than raising this. This exception is provided 
+
+    Note: The SDK methods (like scanner.scan() or canary.check()) generally
+    return a Result object rather than raising this. This exception is provided
     for users who prefer to raise it in their own logic based on the Result.
     """
-    
+
     pass
