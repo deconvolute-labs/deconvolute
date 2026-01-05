@@ -97,6 +97,7 @@ We follow Conventional Commits. This allows us to generate changelogs automatica
 
 1.  **Generate Changelog:**
     Run the following command locally to generate the changelog for the new version (e.g. `0.1.0`):
+
     ```bash
     uv run git-cliff --tag 0.1.0 --output CHANGELOG.md
     ```

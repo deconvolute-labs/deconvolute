@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "deconvolute"
 dynamic = ["version"]
-description = "A defense-in-depth library for RAG input and output scanning and sanitization"
+description = "Deconvolute is a defense-in-depth SDK designed to secure every stage of your Retrieval Augmented Generation (RAG) pipeline."
 readme = "README.md"
 requires-python = ">=3.11"
 license = "Apache-2.0"
@@ -44,6 +44,7 @@ dev = [
   "ruff>=0.14.0",
   "mypy>=1.0.0",
   "git-cliff>=2.11.0",
+  "pytest-asyncio>=1.3.0",
 ]
 
 # --- Tool Configuration ---
