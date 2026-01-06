@@ -4,9 +4,9 @@
 
 
 [![CI](https://github.com/daved01/deconvolute/actions/workflows/ci.yml/badge.svg)](https://github.com/daved01/deconvolute/actions/workflows/ci.yml)
-[![License](https://img.shields.io/pypi/l/deconvolute.svg?pypi_base_url=https://test.pypi.org)](https://test.pypi.org/project/deconvolute/)
-[![TestPyPI version](https://img.shields.io/pypi/v/deconvolute.svg?pypi_base_url=https://test.pypi.org)](https://test.pypi.org/project/deconvolute/)
-[![Supported Python versions](https://img.shields.io/pypi/pyversions/deconvolute.svg?pypi_base_url=https://test.pypi.org)](https://test.pypi.org/project/deconvolute/)
+[![License](https://img.shields.io/pypi/l/deconvolute.svg)](https://pypi.org/project/deconvolute/)
+[![PyPI version](https://img.shields.io/pypi/v/deconvolute.svg)](https://pypi.org/project/deconvolute/)
+[![Supported Python versions](https://img.shields.io/pypi/pyversions/deconvolute.svg)](https://pypi.org/project/deconvolute/)
 
 **Protect your RAG pipeline from Indirect Prompt Injection and Poisoned Knowledge.**
 
