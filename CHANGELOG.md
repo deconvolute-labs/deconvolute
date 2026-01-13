@@ -1,3 +1,13 @@
+## [0.1.0a4] - 2026-01-13
+
+### 🚀 Features
+
+- Rename property to threat_detected in DetectionResult
+
+### ⚙️ Miscellaneous Tasks
+
+- Improve workflow
+- Prepare v0.1.0a4
 ## [0.1.0a3] - 2026-01-06
 
 ### 📚 Documentation
@@ -7,6 +17,7 @@
 ### ⚙️ Miscellaneous Tasks
 
 - Fix warning for init commit message
+- Prepare v0.1.0a3
 ## [0.1.0a2] - 2026-01-06
 
 ### 🐛 Bug Fixes
