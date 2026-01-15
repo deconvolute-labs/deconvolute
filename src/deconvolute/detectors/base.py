@@ -54,7 +54,7 @@ class BaseDetector(ABC):
     """
 
     @abstractmethod
-    def check(self, content: str, **kwargs) -> DetectionResult:
+    def check(self, content: str, **kwargs: Any) -> DetectionResult:
         """
         Analyzes the provided content for threats.
 
@@ -68,7 +68,7 @@ class BaseDetector(ABC):
         pass
 
     @abstractmethod
-    async def a_check(self, content: str, **kwargs) -> DetectionResult:
+    async def a_check(self, content: str, **kwargs: Any) -> DetectionResult:
         """
         Async version of check.
         """

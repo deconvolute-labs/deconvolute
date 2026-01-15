@@ -2,7 +2,7 @@ import string
 
 import pytest
 
-from deconvolute.canary.generator import generate_raw_token
+from deconvolute.detectors.canary.generator import generate_raw_token
 
 
 def test_generate_defaults() -> None:

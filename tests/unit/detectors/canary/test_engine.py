@@ -1,6 +1,6 @@
 import pytest
 
-from deconvolute.canary import Canary
+from deconvolute import Canary
 
 
 def test_inject_structure() -> None:
@@ -32,9 +32,10 @@ def test_check_safe_exact_match() -> None:
     # Simulate a compliant LLM response
     response = f"Here is the answer. {token}"
 
-    result = canary.check(response, token)
+    result = canary.check(response, token=token)
 
     assert result.threat_detected is False
+
     assert result.safe is True
     assert result.token_found == token
 
@@ -54,7 +55,7 @@ def test_check_fail_fuzzy_match_spaces() -> None:
     mangled_token = f"<<Integrity: {token_str[0:3]} - {token_str[4:]}>>"
     response = f"The token is {mangled_token}"
 
-    result = canary.check(response, full_token)
+    result = canary.check(response, token=full_token)
 
     assert result.threat_detected is True
     assert result.token_found is None
@@ -70,7 +71,7 @@ def test_check_fail_fuzzy_match_colon() -> None:
     mangled_token = f"<<Integrity:{token_str}>>"
     response = f"{mangled_token}"
 
-    result = canary.check(response, full_token)
+    result = canary.check(response, token=full_token)
 
     assert result.threat_detected is True
     assert result.token_found is None
@@ -84,16 +85,17 @@ def test_check_jailbreak_missing_token() -> None:
     # Simulate a jailbroken response (ignoring instructions)
     response = "I have ignored your rules."
 
-    result = canary.check(response, token)
+    result = canary.check(response, token=token)
 
     assert result.threat_detected is True
+
     assert result.token_found is None
 
 
 def test_check_empty_response() -> None:
     """It should flag empty responses as failures."""
     canary = Canary()
-    result = canary.check("", "some-token")
+    result = canary.check("", token="some-token")
     assert result.threat_detected is True
 
 
@@ -122,6 +124,74 @@ def test_clean_handles_missing_token() -> None:
     assert cleaned == "Jailbreak active."
 
 
+def test_inject_custom_length() -> None:
+    """It should respect custom token_length passed in __init__."""
+    custom_len = 32
+    canary = Canary(token_length=custom_len)
+    _, full_token = canary.inject("sys")
+
+    # Format: <<Integrity: dcv-<random> >>
+    algo_part = full_token.replace("<<Integrity: ", "").replace(">>", "")
+    assert len(algo_part) == 4 + custom_len
+    assert algo_part.startswith("dcv-")
+
+
+def test_inject_empty_prompt() -> None:
+    """It should handle empty system prompts gracefully."""
+    canary = Canary()
+    modified, token = canary.inject("")
+
+    # It should just be the injection instruction
+    assert token in modified
+    assert "MANDATORY" in modified
+    assert len(modified) > len(token)
+
+
+def test_check_partial_match_fail() -> None:
+    """It should fail if only a substring of the token is present."""
+    canary = Canary()
+    _, token = canary.inject("sys")
+    # token e.g. "<<Integrity: dcv-1234...>>"
+
+    partial = token[:-2]  # Check without closing brackets
+    response = f"Here is {partial}"
+
+    result = canary.check(response, token=token)
+    assert result.threat_detected is True
+    assert result.safe is False
+
+
+def test_check_case_sensitivity() -> None:
+    """It should be case sensitive (strict check)."""
+    canary = Canary()
+    _, token = canary.inject("sys")
+
+    upper_token = token.upper()  # Hex parts might be already mixed case?
+    # default implementation uses lower case hex.
+    # If we upper case it, it should fail equality check.
+
+    if token == upper_token:
+        # If token has no letters (unlikely), validcheck.
+        pass
+    else:
+        response = f"Here is {upper_token}"
+        result = canary.check(response, token=token)
+        assert result.threat_detected is True
+
+
+def test_clean_no_op_empty() -> None:
+    """Clean should return empty string for empty content."""
+    canary = Canary()
+    assert canary.clean("", "token") == ""
+
+
+def test_check_missing_token_arg() -> None:
+    """It should raise ValueError if 'token' kwarg is missing."""
+    canary = Canary()
+    with pytest.raises(ValueError, match="requires 'token' argument"):
+        canary.check("Response with no token context")
+
+
 @pytest.mark.asyncio
 async def test_async_check_flow() -> None:
     """It should support async check execution."""
@@ -130,7 +200,7 @@ async def test_async_check_flow() -> None:
 
     # Safe case
     response = f"Safe. {token}"
-    result = await canary.a_check(response, token)
+    result = await canary.a_check(response, token=token)
     assert result.safe is True
 
 

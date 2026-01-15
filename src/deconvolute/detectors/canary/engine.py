@@ -1,5 +1,6 @@
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
+from typing import Any
 
 from deconvolute.constants import CANARY_INTEGRITY_INSTRUCTION, CANARY_TEMPLATE_FORMAT
 from deconvolute.detectors.base import BaseDetector
@@ -52,7 +53,7 @@ class CanaryDetector(BaseDetector):
         logger.debug(f"Injected integrity canary: {full_token}")
         return secured_prompt, full_token
 
-    def check(self, content: str, **kwargs) -> CanaryResult:
+    def check(self, content: str, **kwargs: Any) -> CanaryResult:
         """
         Verifies if the content string contains the mandatory integrity token.
 
@@ -102,7 +103,7 @@ class CanaryDetector(BaseDetector):
 
         return content.replace(token, "").rstrip()
 
-    async def a_check(self, content: str, **kwargs) -> CanaryResult:
+    async def a_check(self, content: str, **kwargs: Any) -> CanaryResult:
         """Async version of check() using a thread pool."""
         loop = asyncio.get_running_loop()
         return await loop.run_in_executor(
