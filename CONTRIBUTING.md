@@ -4,7 +4,7 @@ Thank you for your interest in making RAG pipelines safer!
 
 ## 1. Development Setup
 
-We use [uv](https://github.com/astral-sh/uv) for dependency management. It is extremely fast and manages Python versions automatically.
+The project uses `uv` for dependency management. It is extremely fast and manages Python versions automatically.
 
 ### Prerequisites
 * Install `uv`:
@@ -23,7 +23,7 @@ We use [uv](https://github.com/astral-sh/uv) for dependency management. It is ex
     cd deconvolute
     ```
 
-2.  Create the environment and install all dependencies (including dev tools, ML, and YARA):
+2.  Create the environment and install all dependencies (including dev tools):
     ```bash
     uv sync --all-extras
     ```
@@ -114,4 +114,3 @@ We follow Conventional Commits. This allows us to generate changelogs automatica
     * Click **Run workflow** and enter the version number (e.g. `0.1.0`).
 
 ## 3. TODO: More coming soon
-

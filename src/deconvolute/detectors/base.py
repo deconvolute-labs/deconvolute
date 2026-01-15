@@ -1,3 +1,4 @@
+from abc import ABC, abstractmethod
 from datetime import UTC, datetime
 from typing import Any
 
@@ -31,7 +32,7 @@ class DetectionResult(BaseModel):
     )
     component: str = Field(
         ...,
-        description="The module that produced this result (e.g. 'Canary').",
+        description="The module that produced this result (e.g. 'CanaryDetector').",
     )
     metadata: dict[str, Any] = Field(
         default_factory=dict,
@@ -43,28 +44,32 @@ class DetectionResult(BaseModel):
 
     @property
     def safe(self) -> bool:
-        """
-        Helper for readable conditionals: if result.safe: ...
-        """
+        """Helper for readable conditionals: if result.safe: ..."""
         return not self.threat_detected
 
 
-class CanaryResult(DetectionResult):
+class BaseDetector(ABC):
     """
-    Result model specific to the Canary Jailbreak Detection module.
-
-    Indicates whether the canary token mechanism detected a violation of the
-    System Prompt instructions.
-
-    Attributes:
-        token_found (str | None): The specific canary token string found in the
-            LLM output, if any.
-            See the `Canary` class documentation for how this relates to
-            detection based on the active scanning mode.
+    Abstract Base Class for all security detectors.
     """
 
-    component: str = "Canary"
+    @abstractmethod
+    def check(self, content: str, **kwargs) -> DetectionResult:
+        """
+        Analyzes the provided content for threats.
 
-    token_found: str | None = Field(
-        None, description="The actual token string found in the output (if any)."
-    )
+        Args:
+            content: The text (prompt or response) to analyze.
+            **kwargs: Additional context.
+
+        Returns:
+            DetectionResult: The assessment of the content.
+        """
+        pass
+
+    @abstractmethod
+    async def a_check(self, content: str, **kwargs) -> DetectionResult:
+        """
+        Async version of check.
+        """
+        pass

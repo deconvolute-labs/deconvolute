@@ -16,11 +16,11 @@ class ConfigurationError(DeconvoluteError):
     pass
 
 
-class SecurityDetectedError(DeconvoluteError):
+class ThreatDetectedError(DeconvoluteError):
     """
     Raised when a security threat is detected.
 
-    Note: The SDK methods (like scanner.scan() or canary.check()) generally
+    Note: The SDK methods (like detector.check()) generally
     return a Result object rather than raising this. This exception is provided
     for users who prefer to raise it in their own logic based on the Result.
     """
