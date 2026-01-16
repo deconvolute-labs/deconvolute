@@ -85,9 +85,8 @@ While Deconvolute focuses on the backdoor, the same detection engines can be app
 
 ## Further Information
 - [User Guide & API Documentation](docs/Readme.md)
-- [Deconvolute Benchmarks](): Detailed efficacy results and code to reproduce results easily.
+- [Deconvolute Benchmarks](https://github.com/daved01/deconvolute-benchmark): Detailed efficacy results and code to reproduce results easily.
 - `CONTRIBUTING.md`: For developers who want to build, test, or contribute to the project.
-- `DESIGN.md`: Details on the layered defense architecture, reasons behind design decisions, and module breakdown.
 
 
 ## References
