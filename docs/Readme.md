@@ -1,188 +1,341 @@
 # Deconvolute SDK - Detector Usage Guide
 
-This guide is for user and provides standard patterns and examples for using the Security Detectors in your AI pipeline.
+## TODO: WE might move this into the main Readme
+Deconvolute is a security SDK for teams building applications on top of large language models. It is designed for developers who want more control over how their systems behave under adversarial or unexpected input.
 
-## Installation & Extras
+LLMs are inherently non deterministic. Even with carefully designed system prompts, the same input can produce different outputs, and untrusted context such as user input or retrieved documents can influence the model in ways that are hard to predict. Because of this, prompts alone are not a reliable security boundary.
 
-The core of Deconvolute is lightweight. Some detectors require additional dependencies (Extras) to function.
+Deconvolute does not attempt to prevent attacks at the model level. Instead, it provides deterministic detectors that identify specific classes of failure and attack patterns. When a detector flags a threat, the SDK surfaces this signal to the developer, who can then decide how to handle it. For example, by blocking a response, discarding a document, logging an incident, or triggering a fallback.
 
-| Detector | Required Install | Description |
-| :--- | :--- | :--- |
-| `CanaryDetector` | `pip install deconvolute` | Included in base. No extra dependencies. |
-| `LanguageDetector` | `pip install deconvolute[language]` | Requires heavy NLP libraries (Lingua). |
+Each detector targets a concrete failure mode, such as loss of instructional adherence or unexpected language switching. These detectors are designed to be composed and layered, so that different attack classes are covered independently. This defense in depth approach makes system behavior more observable and controllable, even when the underlying model is probabilistic.
 
----
+The SDK supports three levels of usage complexity:
+- Simple usage uses pre configured, layered detectors through high level methods. This provides broad protection with minimal setup.
+- Advanced usage allows you to explicitly select and configure detectors to enforce stricter or domain specific policies.
+- Manual usage exposes individual detectors and their full lifecycle, enabling you to build custom logic and integrate them into non standard pipelines.
+
+Most users should start with the simple mode and only move to more advanced usage when they need tighter control or custom behavior.
+
+Note: The detectors are build to simply drop in to existing code and wrap LLM clients like OpenAI, so you only have to change one line of code to get started.
+
 
 ## Core Concepts
 
-All detectors in Deconvolute follow a standard interface. They provide both synchronous and asynchronous methods to fit any pipeline architecture (e.g. standard Flask/Django apps or Async FastAPI/LangChain agents).
+### Detectors
 
-### 1. The `BaseDetector` Interface
+A detector is a deterministic check that analyzes text and looks for a specific class of failure or attack pattern. Detectors do not modify model behavior. They observe inputs or outputs and report whether a policy violation or threat was detected.
 
-Every detector implements these core methods:
+Each detector is built around a concrete hypothesis, such as whether the model followed system instructions or whether the output language matches expectations. This makes detector results interpretable and actionable.
 
-* `check(content: str, **kwargs) -> DetectionResult`: Analyzes text for threats.
-* `a_check(content: str, **kwargs) -> DetectionResult`: Async version of check.
+### Defense in Depth
 
-### 2. Result Models
+No single detector can cover all possible failure modes. Deconvolute is designed around a defense in depth strategy where multiple independent detectors are applied together. Each detector covers a different attack surface, and a failure in one does not invalidate the others.
 
-Detectors return structured objects, not just booleans. This allows for rich telemetry and debugging.
+Layering detectors increases overall system robustness without relying on a single fragile rule or prompt.
 
-**`DetectionResult` (Base Class)**
-The common ancestor for all results.
-* `threat_detected` (bool): `True` if a threat was found.
-* `component` (str): Name of the detector (e.g. `CanaryDetector`).
-* `timestamp` (datetime): UTC time of the check.
-* `metadata` (dict): Arbitrary context (e.g. latency, scores).
+### Detection Results
 
-**`CanaryResult`**
-* `token_found (str | None)`: The specific token string found in the output (if the check passed).
+Detectors return structured result objects rather than simple booleans. A result indicates whether a threat was detected and includes metadata such as which detector triggered and additional context useful for logging or debugging.
 
-**`LanguageResult`**
-* `detected_language (str)`: The ISO code of the language detected (e.g. `en`, `fr`).
-* `confidence (float)`: The statistical confidence of the detection (0.0 to 1.0).
+This allows applications to make informed decisions about how to handle detected threats instead of treating all failures the same.
 
----
+### Synchronous and Asynchronous Execution
 
-## Detectors
+All detectors support both synchronous and asynchronous execution. This allows them to be used in blocking request flows, background jobs, and async frameworks without changing their behavior or semantics.
 
-Available Detectors:
-- `CanaryDetector`
-- `LanguageDetector`
+High level APIs automatically use the appropriate execution model when available.
+
+
+## Getting Started
+
+### Installation
+
+Install the base SDK using pip:
+
+```python
+pip install deconvolute
+```
+
+The base installation includes the default detector set and is sufficient to get started.
+
+### Two Entry Points: guard and scan
+
+Deconvolute provides two primary entry points that are designed for different parts of an AI system:
+- `guard()` protects live LLM calls by wrapping an API client.
+- `scan()` analyzes individual text strings before they are used or stored.
+
+They are designed to be used together as part of a defense in depth strategy.
+
+### Protecting LLM Calls with guard
+
+Use `guard()` to wrap an existing LLM client. This applies a pre configured, layered set of detectors to model inputs and outputs while keeping latency overhead minimal. This makes it suitable for direct user facing request flows.
+
+
+```python
+import os
+from openai import OpenAI
+from deconvolute import guard
+
+raw_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+
+client = guard(raw_client)
+
+try:
+    response = client.chat.completions.create(
+        model="gpt-4",
+        messages=[{"role": "user", "content": "Tell me a joke."}]
+    )
+    print(response.choices[0].message.content)
+except Exception as e:
+    print(f"Security Alert: {e}")
+```
+
+If a detector flags a threat, the SDK raises an error. How that error is handled is up to the application.
+
+#### Currently Supported Clients:
+- OpenAI
+
+### Scanning Text with scan
+
+Use `scan()` to analyze individual text strings. This is typically used in RAG pipelines to validate documents or chunks before they are stored or injected into a prompt.
+
+This helps prevent poisoned knowledge base attacks where malicious content is introduced upstream and later influences model behavior.
+
+```python
+from deconvolute import scan
+
+doc_chunk = "Suspicious text retrieved from vector database..."
+
+result = scan(doc_chunk)
+
+if result.threat_detected:
+    print(f"Threat detected in chunk: {result.component}")
+else:
+    context.append(doc_chunk)
+```
+
+Unlike `guard()`, `scan()` is not optimized for low latency. It is intended for offline or background processing where correctness is more important than response time.
+
+### Asynchronous Usage
+
+All high level APIs also support asynchronous execution.
+
+When using async code, `guard()` automatically uses async detector methods where available. For `scan()`, use await `a_scan()` instead of `scan()`.
+
+```python
+result = await a_scan(doc_chunk)
+```
+
+For most applications, starting with the default configuration of `guard()` and `scan()` is sufficient. Advanced configuration is only needed when enforcing custom policies or enabling specific detectors.
+
+
+## Advanced Configuration
+
+Advanced configuration allows you to explicitly control which detectors are used and how they are configured. This is useful when you want to enforce stricter policies, optimize for a specific threat model, or enable optional detectors.
+
+### Custom Detector Policies
+
+Both `guard()` and `scan()` accept an explicit list of detectors. When provided, only these detectors are executed.
+
+```python
+from openai import OpenAI
+from deconvolute import guard, CanaryDetector, LanguageDetector
+
+detectors = [
+    CanaryDetector(token_length=32),
+    LanguageDetector(allowed_languages=["fr"])
+]
+
+client = guard(OpenAI(), detectors=detectors)
+```
+
+This allows you to define a clear security policy, such as enforcing instructional adherence while restricting all outputs to a specific language.
+
+The same approach applies to `scan()`.
+
+```python
+from deconvolute import scan, CanaryDetector
+
+result = scan(
+    content=doc_chunk,
+    detectors=[CanaryDetector()]
+)
+```
+
+### Available Detectors
+
+The table below lists the currently available detectors, the types of threats they are designed to detect, and any required installation extras.
+
+| Detector           | Threat Class                                 | Typical Use Case                       | Required Install         |
+| :----------------- | :------------------------------------------- | :------------------------------------- | :----------------------- |
+| `CanaryDetector`   | Instruction overwrite and jailbreaks         | Detect loss of system prompt adherence | Base install             |
+| `LanguageDetector` | Language switching and payload splitting     | Enforce output language policies       | `deconvolute[language]`  |
+
+Additional detectors may require optional dependencies. These are intentionally kept out of the base install to keep the core SDK lightweight.
+
+### Async Behavior
+
+All detectors support synchronous and asynchronous execution.
+- `guard()` automatically uses async detector methods when wrapping async clients.
+- `scan()` must be explicitly awaited using `a_scan()` in async code.
+
+```python
+result = await a_scan(doc_chunk, detectors=detectors)
+```
+
+Async execution does not change detector semantics. It only affects how checks are scheduled and executed.
+
+### Installation Extras
+
+Some detectors rely on heavier dependencies. These are installed via extras.
+
+```python
+pip install deconvolute[language]
+```
+
+If an optional detector is configured but its dependencies are not installed, an error is raised at initialization time.
+
+## Direct Detector Usage
+
+Most applications should rely on `guard()` and `scan()` to apply detectors automatically. These APIs handle detector composition, execution order, and error propagation for common use cases.
+
+Direct detector usage is intended for advanced scenarios where you need full control over how and when detectors are applied. This includes custom LLM orchestration, non standard execution flows, or cases where detector results need to be combined with application specific logic.
+
+When used directly, each detector exposes a small lifecycle that allows you to inject constraints, run the model, and verify the result deterministically. This makes it possible to build custom security logic while still relying on the same underlying detectors used by the high level APIs.
+
+The following sections describe the available detectors and their APIs.
 
 
 ### CanaryDetector
 
-**Requirement:** Base Install
+**Threat class:** Instruction overwrite and jailbreaks
 
-Detects if the LLM followed your System Prompt instructions (Instructional Adherence). It works by injecting a random token and verifying its presence in the output.
+**Purpose:** Detect whether the model followed mandatory system level instructions
 
-#### Example
+The `CanaryDetector` verifies instructional adherence by injecting a secret token into the system prompt and checking for its presence in the model output. If the token is missing, it indicates that the model likely prioritized untrusted context over system instructions.
+
+This detector does not prevent jailbreaks. It makes loss of control observable and enforceable.
+
+#### Detector Lifecycle
+The CanaryDetector follows a simple four step lifecycle:
+1. Inject a mandatory instruction and secret token into the system prompt
+2. Run the LLM
+3. Check whether the token is present in the output
+4. Optionally remove the token before returning the response
+
+#### Synchronous Example
 
 ```python
-from deconvolute import CanaryDetector, CanaryResult, ThreatDetectedError
+from deconvolute import CanaryDetector, ThreatDetectedError
 
-# Initialize
-# You can customize the token length if needed.
 canary = CanaryDetector(token_length=16)
 
-# Inject (Pre-LLM)
-# This modifies your system prompt to include the mandatory token instruction.
-# Returns the new prompt string and the secret token.
 system_prompt = "You are a helpful assistant."
-secure_system_prompt, token = canary.inject(system_prompt)
+secure_prompt, token = canary.inject(system_prompt)
 
-# Run LLM (Pseudo-code)
-# Response should look like: "Sure, here is the info... [dcv-8f7a...]"
-llm_response: str = llm.invoke(
+llm_response = llm.invoke(
     messages=[
-        {"role": "system", "content": secure_system_prompt},
-        {"role": "user", "content": user_message_with_context}
+        {"role": "system", "content": secure_prompt},
+        {"role": "user", "content": user_input}
     ]
 )
 
-# Check (Post-LLM)
-# Verify if the token is present.
-result: CanaryResult = canary.check(llm_response, token)
+result = canary.check(llm_response, token=token)
 
 if result.threat_detected:
-    print(f"Alert! Jailbreak detected via {result.component}")
-    # Handle the threat (block response, log incident, etc.)
-    raise ThreatDetectedError("Response blocked: Instructional adherence failed.")
-else:
-    print("Response is safe.")
+    raise ThreatDetectedError("Instructional adherence failed")
 
-# Clean (Optional)
-# Remove the token from the final string before showing it to the user.
-final_output: str = canary.clean(llm_response, token)
+# Removes the token for clean user output
+final_output = canary.clean(llm_response, token)
 ```
 
-#### Asynchronous Usage
+#### Asynchronous:
 
 ```python
-import asyncio
 from deconvolute import CanaryDetector
 
-async def run_pipeline():
-    canary = CanaryDetector()
-    secure_prompt, token = canary.inject("System Prompt...")
-    
-    # ... await llm.ainvoke(...) ...
-    llm_response = "..."
+canary = CanaryDetector()
 
-    # Async Check (Non-blocking)
-    result = await canary.a_check(llm_response, token=token)
-    
-    if not result.threat_detected:
-        final_output = await canary.a_clean(llm_response, token)
+secure_prompt, token = canary.inject("System prompt...")
 
-asyncio.run(run_pipeline())
+llm_response = await llm.ainvoke(...)
+
+result = await canary.a_check(llm_response, token=token)
+
+if not result.threat_detected:
+    final_output = await canary.a_clean(llm_response, token)
 ```
 
-**Why it works:** This implements a synthetic integrity check to enforce Instruction Hierarchy (Wallace et al. 2024). In a successful RAG jailbreak, the model suffers from Context Overwrite where untrusted retrieved data (e.g. a malicious PDF) overrides the priority of the system prompt. By making the canary token a mandatory instruction, a quantifiable test of executive control is created because if the token is missing, the model has prioritized the untrusted context over your system instructions.
+This detector is latency light and suitable for direct user facing request paths.
 
 ### LanguageDetector
 
-**Requirement:** `pip install deconvolute[language]`
+**Threat class:** Language switching and payload splitting
 
-Ensures the LLM output matches expected languages. This defends against *Payload Splitting* attacks where an attacker forces the model to output malicious content in a different language (e.g. Latin, Base64, or unexpected German) to bypass keyword filters.
+**Purpose:** Enforce output language policies or input output language consistency
 
-You can configure the detector with a static list of allowed languages.
+The `LanguageDetector` checks the language of generated text and compares it against a policy. This can be a static list of allowed languages or a correspondence check between input and output.
+
+It is commonly used to detect attempts to bypass filters by switching languages or encodings.
+
+
+#### Configuration
 
 ```python
-from deconvolute import LanguageDetector, LanguageResult, ThreatDetectedError
+from deconvolute import LanguageDetector
 
-# Allow English and Spanish.
-# 'strategy' can be 'strict' (default) or 'lenient' (for short text).
-detector = LanguageDetector(allowed_languages=["en", "es"])
+detector = LanguageDetector(
+    allowed_languages=["en", "es"],
+    strategy="strict"
+)
 ```
 
-#### Mode A: Static Policy Check
-
-Checks if the output belongs to the allowed list, regardless of input.
+#### Static Policy Check
+This mode verifies that the output language is part of an allowed set.
 
 ```python
-response_text = "Bonjour le monde" # French (Not in allowed list)
+from deconvolute import ThreatDetectedError
 
-# 1. Check
-result = detector.check(response_text)
+result = detector.check("Bonjour le monde")
 
 if result.threat_detected:
-    # metadata contains details: {'detected_language': 'fr', 'allowed': ['en', 'es']}
-    print(f"Language Violation: {result.metadata['detected_language']}")
-    raise ThreatDetectedError("Response blocked: Instructional adherence failed.")
+    raise ThreatDetectedError("Unexpected language detected")
 ```
 
-#### Mode B: Input-Output Correspondence
-
-Checks if the Output language matches the Input language. This is useful for multi-lingual bots where you don't know the user's language in advance, but you want to ensure the bot doesn't switch languages unexpectedly.
+#### Input Output Correspondence Check
+This mode ensures the model responds in the same language as the input.
 
 ```python
-user_input = "Tell me a joke." # Detected as English
-model_output = "Aquí hay una broma..." # Spanish
+user_input = "Tell me a joke."
+model_output = "Aquí hay una broma..."
 
-# Pass 'reference_text' (the user input) to enforce matching.
-# Even if Spanish is in 'allowed_languages', you might want to enforce 
-# that an English question gets an English answer.
 result = detector.check(
-    content=model_output, 
+    content=model_output,
     reference_text=user_input
 )
 
 if result.threat_detected:
-    print("Language Mismatch detected!")
+    print("Language mismatch detected")
 ```
 
-#### Asynchronous Usage
+#### Asynchronous Example
 
 ```python
-async def check_lang():
-    detector = LanguageDetector(allowed_languages=["en"])
-    
-    # Non-blocking language detection (runs in thread pool)
-    result = await detector.a_check(llm_output)
-    
-    if result.threat_detected:
-        raise SecurityError("Wrong language detected")
+result = await detector.a_check(model_output)
+
+if result.threat_detected:
+    handle_violation(result)
 ```
 
+Language detection relies on external NLP libraries and requires the language extra to be installed.
+
+
+## Notes
+
+Deconvolute is an actively evolving SDK. New detectors are continuously being added to cover additional failure modes and attack patterns observed in real world systems.
+
+The SDK is intentionally modular. Detectors are designed to be independent, composable, and explicit in what they detect. This makes it possible to extend the system without changing existing behavior or assumptions.
+
+Deconvolute does not aim to be a complete security solution for LLMs. It provides deterministic signals that help developers regain control over probabilistic systems. How those signals are used, whether to block, log, retry, or fall back, is a product decision and remains fully in the hands of the developer.
+
+Feedback, real world use cases, and observed failure patterns directly influence the roadmap and future detector design.

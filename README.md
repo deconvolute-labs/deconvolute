@@ -1,106 +1,127 @@
 # Deconvolute: The RAG Security SDK
 
-⚠️ **Pre-alpha development version**
-
 
 [![CI](https://github.com/daved01/deconvolute/actions/workflows/ci.yml/badge.svg)](https://github.com/daved01/deconvolute/actions/workflows/ci.yml)
 [![License](https://img.shields.io/pypi/l/deconvolute.svg)](https://pypi.org/project/deconvolute/)
 [![PyPI version](https://img.shields.io/pypi/v/deconvolute.svg?color=green)](https://pypi.org/project/deconvolute/)
 [![Supported Python versions](https://img.shields.io/badge/python->=3.11-blue.svg?)](https://pypi.org/project/deconvolute/)
 
-**Protect your RAG pipeline from Indirect Prompt Injection and Poisoned Knowledge.**
+⚠️ **Alpha development version** — usable but limited, API may change
+
+## Introduction
+
+Deconvolute is a security SDK for large language model systems that gives developers deterministic signals when a model produces outputs outside expected behavior. Large language models are non-deterministic, and even carefully designed prompts cannot fully specify all constraints needed to align the system with developer intent.
+
+Instead of preventing attacks, Deconvolute detects specific failure modes, such as lost instructional priority or unexpected language switching, and surfaces them to the developer. This allows you to decide how to handle these events, for example by blocking, logging, discarding content, or triggering custom fallback logic.
+
+Detectors are modular and composable. Each targets a concrete failure mode, and layering multiple detectors provides broader coverage and fine-grained control.
+
+> **Note:**
+> Deconvolute is not a prevention system. It detects events and gives developers control over how to respond.
+> It is not a magic shield. Prompt design and system-level logic are still required.
+> It is modular. Detectors are independent, composable, and can be layered for broader coverage.
 
 
-Deconvolute is a defense-in-depth SDK designed to secure every stage of your Retrieval Augmented Generation (RAG) pipeline. It supports both asynchronous and synchronous usage.
+## Quick Start
 
-> **The Threat Model:** To understand the full range of attacks this SDK defends against from front-door injections to back-door corpus poisoning read the survey report: [The Hidden Attack Surfaces of RAG](https://deconvoluteai.com/blog/attack-surfaces-rag?utm_source=github.com&utm_medium=readme&utm_campaign=deconvolute).
-
-
-## Getting Started
-
-First, install the core package using pip:
+Install the core SDK:
 
 ```bash
 pip install deconvolute
 ```
 
-Optional Features: To use the Language Detection module, install the extra:
+Deconvolute works out-of-the-box with standard OpenAI clients (other clients coming soon). Here is a minimal usage example:
 
-```bash
-pip install deconvolute[language]
+```python
+from openai import OpenAI
+from deconvolute import guard, ThreatDetectedError
+
+# Wrap your LLM client to align system outputs with developer intent
+client = guard(OpenAI(api_key="YOUR_KEY"))
+
+try:
+    # Use the client as usual
+    response = client.chat.completions.create(
+        model="gpt-4",
+        messages=[{"role": "user", "content": "Tell me a joke."}]
+    )
+    print(response.choices[0].message.content)
+
+except ThreatDetectedError as e:
+    # Handle security events
+    print(f"Security Alert: {e}")
+
+# Pre-ingestion scanning example:
+# scan() is used to check text before it enters your RAG database or context
+# from deconvolute import scan
+# result = scan("Suspicious text from a document...")
+# if result.threat_detected:
+#     print(f"Threat detected: {result.component}")
 ```
 
-Or, if you want to install everyting, just run
+This snippet shows the simplest way to get started:
+- `guard()` wraps your LLM client to detect issues in real-time and ensure outputs align with your intent.
+- `scan()` is optional and used before text enters your system to detect poisoned or unexpected content.
 
-```bash
-pip install deconvolute[all]
-```
-
-## Usage
-
-Deconvolute is architected to defend the critical threat surfaces of an AI Agent or RAG pipeline, with a primary focus on preventing Poisoned Knowledge and Indirect Prompt Injection.
-
-See the [Usage Guide & API Docs](/docs/Readme.md) for detailed code examples, configuration options, and integration patterns.
-
-### 1. Context Defense (The Backdoor)
-
-![Status: Planned](https://img.shields.io/badge/Status-Planned-blue)
-
-**Prevent Indirect Prompt Injection via RAG.**
+For full examples, advanced configuration, and integration patterns, see the [Usage Guide & API Documentation](/docs/Readme.md).￼
 
 
-This is the core focus of Deconvolute. Attackers hide malicious instructions in trusted documents (e.g. PDFs, white text on web pages) to hijack the model during retrieval.
-* **Scanners:** Detect *Vector Magnets* (content optimized to force retrieval) before they enter your database.
-* **Sanitizers:** Enforce instruction hierarchy during the retrieval step to isolate trusted system instructions from untrusted retrieved data.
+## How It Is Used
 
-### 2. Output Defense
+The SDK supports three primary usage patterns:
 
-![Status: Experimental](https://img.shields.io/badge/Status-Experimental-orange)
+### 1. Wrap LLM clients
+Apply detectors to the outputs of an API client (for example, OpenAI or other LLMs). This allows you to catch issues like lost system instructions or language violations in real time, before the output is returned to your application.
 
-**Verify LLM Integrity and Adherence.**
+### 2. Scan untrusted text
+Check any text string before it enters your pipeline, such as documents retrieved for a RAG system. This can catch poisoned content early, preventing malicious data from influencing downstream responses.
 
-Even if an attack bypasses the first layer, you can catch it at the output.
-* **Canary Detection:** Injects a cryptographic token into the system prompt and verifies if the LLM includes it in the final response. If the token is missing, the model likely ignored your instructions (Jailbreak).
-* **Language Verification:** Ensures the output language matches the input language or a specific allow-list, preventing *Payload Splitting* attacks where the model hides malicious output in a foreign language.
+### 3. Layer detectors for defense in depth
+Combine multiple detectors to monitor different failure modes simultaneously. Each detector targets a specific threat, and using them together gives broader coverage and richer control over the behavior of your models.
 
-### 3. Input Defense (The Front Door)
-
-![Status: Planned](https://img.shields.io/badge/Status-Planned-blue)
-
-**Filter User Prompts.**
+For detailed examples, configuration options, and integration patterns, see the [Usage Guide & API Documentation](/docs/Readme.md)￼
 
 
-While Deconvolute focuses on the backdoor, the same detection engines can be applied to user inputs. Future modules will support signature-based detection of known Jailbreak patterns in user chat messages.
+## Development Status
 
+Deconvolute is currently in pre-alpha development. Some detectors are experimental and not yet red-teamed, while others are functionally complete and safe to try in controlled environments.
 
-### Feature Status
-
-
-| Module | Feature | Status | Description |
+| Detector | Domain | Status | Description |
 | :--- | :--- | :--- | :--- |
-| **Generation** | Canary Token | ![Status: Experimental](https://img.shields.io/badge/Status-Experimental-orange) | Active integrity checks using cryptographic tokens to detect jailbreaks. |
-| **Generation** | Language Filter | ![Status: Experimental](https://img.shields.io/badge/Status-Experimental-orange) | Input-Output correspondence checks to prevent payload splitting. |
+| `CanaryDetector` | Integrity | ![Status: Experimental](https://img.shields.io/badge/Status-Experimental-orange) | Active integrity checks using cryptographic tokens to detect jailbreaks. |
+| `LanguageDetector` | Content | ![Status: Experimental](https://img.shields.io/badge/Status-Experimental-orange) | Ensures output language matches expectations and prevents payload-splitting attacks.
+ |
 
 
-**Note on status:**
+**Status guide:**
 
-- *Planned:* On the roadmap; not yet implemented.
-- *Experimental:* Functionally complete and unit-tested, but not yet red-teamed. Use with caution in production.
-- *Validated:* Empirically tested against SOTA models with results published in benchmarks..
+- Planned: On the roadmap, not yet implemented.
+- Experimental: Functionally complete and unit-tested, but not yet fully validated in production.
+- Validated: Empirically tested with benchmarked results.
 
-
-## Further Information
-- [User Guide & API Documentation](docs/Readme.md)
-- [Deconvolute Benchmarks](https://github.com/daved01/deconvolute-benchmark): Detailed efficacy results and code to reproduce results easily.
-- `CONTRIBUTING.md`: For developers who want to build, test, or contribute to the project.
+For reproducible experiments and detailed performance results of detectors and layered defenses, see the deconvolute-benchmark repo￼.
 
 
-## References
+## Links & Next Steps
+- [Usage Guide & API Documentation](docs/Readme.md):Detailed code examples, configuration options, and integration patterns.
+- [The Hidden Attack Surfaces of RAG](https://deconvoluteai.com/blog/attack-surfaces-rag?utm_source=github.com&utm_medium=readme&utm_campaign=deconvolute)￼— Overview of RAG attack surfaces and security considerations.
+- [Benchmarks of Detectors](https://github.com/daved01/deconvolute-benchmark) — Reproducible experiments and layered detector performance results.
+- CONTRIBUTING.md — Guidelines for building, testing, or contributing to the project.
+
+
+## Further Reading
 
 <details>
-<summary>Click to view academic sources</summary>
+<summary>Click to view sources</summary>
+
+Geng, Yilin, Haonan Li, Honglin Mu, et al. “Control Illusion: The Failure of Instruction Hierarchies in Large Language Models.” arXiv:2502.15851. Preprint, arXiv, December 4, 2025. https://doi.org/10.48550/arXiv.2502.15851.
+
+Greshake, Kai, Sahar Abdelnabi, Shailesh Mishra, Christoph Endres, Thorsten Holz, and Mario Fritz. “Not What You’ve Signed Up For: Compromising Real-World LLM-Integrated Applications with Indirect Prompt Injection.” Proceedings of the 16th ACM Workshop on Artificial Intelligence and Security, November 30, 2023, 79–90. https://doi.org/10.1145/3605764.3623985.
+
+Liu, Yupei, Yuqi Jia, Runpeng Geng, Jinyuan Jia, and Neil Zhenqiang Gong. “Formalizing and Benchmarking Prompt Injection Attacks and Defenses.” Version 5. Preprint, arXiv, 2023. https://doi.org/10.48550/ARXIV.2310.12815.
 
 Wallace, Eric, Kai Xiao, Reimar Leike, Lilian Weng, Johannes Heidecke, and Alex Beutel. "The Instruction Hierarchy: Training LLMs to Prioritize Privileged Instructions." arXiv:2404.13208. Preprint, arXiv, April 19, 2024. https://doi.org/10.48550/arXiv.2404.13208.
 
+Zou, Wei, Runpeng Geng, Binghui Wang, and Jinyuan Jia. “PoisonedRAG: Knowledge Corruption Attacks to Retrieval-Augmented Generation of Large Language Models.” arXiv:2402.07867. Preprint, arXiv, August 13, 2024. https://doi.org/10.48550/arXiv.2402.07867.
 
 </details>
