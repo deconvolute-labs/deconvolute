@@ -1,25 +1,11 @@
 # Deconvolute SDK - Detector Usage Guide
 
-## TODO: WE might move this into the main Readme
-Deconvolute is a security SDK for teams building applications on top of large language models. It is designed for developers who want more control over how their systems behave under adversarial or unexpected input.
-
-LLMs are inherently non deterministic. Even with carefully designed system prompts, the same input can produce different outputs, and untrusted context such as user input or retrieved documents can influence the model in ways that are hard to predict. Because of this, prompts alone are not a reliable security boundary.
-
-Deconvolute does not attempt to prevent attacks at the model level. Instead, it provides deterministic detectors that identify specific classes of failure and attack patterns. When a detector flags a threat, the SDK surfaces this signal to the developer, who can then decide how to handle it. For example, by blocking a response, discarding a document, logging an incident, or triggering a fallback.
-
-Each detector targets a concrete failure mode, such as loss of instructional adherence or unexpected language switching. These detectors are designed to be composed and layered, so that different attack classes are covered independently. This defense in depth approach makes system behavior more observable and controllable, even when the underlying model is probabilistic.
-
-The SDK supports three levels of usage complexity:
-- Simple usage uses pre configured, layered detectors through high level methods. This provides broad protection with minimal setup.
-- Advanced usage allows you to explicitly select and configure detectors to enforce stricter or domain specific policies.
-- Manual usage exposes individual detectors and their full lifecycle, enabling you to build custom logic and integrate them into non standard pipelines.
-
-Most users should start with the simple mode and only move to more advanced usage when they need tighter control or custom behavior.
-
-Note: The detectors are build to simply drop in to existing code and wrap LLM clients like OpenAI, so you only have to change one line of code to get started.
-
+This section explains core concepts and shows how to use Deconvolute.
 
 ## Core Concepts
+
+TODO: Improve this
+Deconvolute is built around detectors that are applied in layers to achieve a defense-in-depth detection.
 
 ### Detectors
 
@@ -47,6 +33,8 @@ High level APIs automatically use the appropriate execution model when available
 
 
 ## Getting Started
+
+TODO: Add something here
 
 ### Installation
 
@@ -169,7 +157,7 @@ The table below lists the currently available detectors, the types of threats th
 | Detector           | Threat Class                                 | Typical Use Case                       | Required Install         |
 | :----------------- | :------------------------------------------- | :------------------------------------- | :----------------------- |
 | `CanaryDetector`   | Instruction overwrite and jailbreaks         | Detect loss of system prompt adherence | Base install             |
-| `LanguageDetector` | Language switching and payload splitting     | Enforce output language policies       | `deconvolute[language]`  |
+| `LanguageDetector` | Language switching and payload splitting     | Enforce output language policies       | Base install             |
 
 Additional detectors may require optional dependencies. These are intentionally kept out of the base install to keep the core SDK lightweight.
 
@@ -190,7 +178,7 @@ Async execution does not change detector semantics. It only affects how checks a
 Some detectors rely on heavier dependencies. These are installed via extras.
 
 ```python
-pip install deconvolute[language]
+pip install deconvolute[ml] # Conceptually
 ```
 
 If an optional detector is configured but its dependencies are not installed, an error is raised at initialization time.

@@ -1,3 +1,6 @@
+from typing import Any
+
+
 class DeconvoluteError(Exception):
     """
     Base exception class for all errors raised by the Deconvolute SDK.
@@ -25,4 +28,6 @@ class ThreatDetectedError(DeconvoluteError):
     for users who prefer to raise it in their own logic based on the Result.
     """
 
-    pass
+    def __init__(self, message: str, result: Any = None):
+        super().__init__(message)
+        self.result = result

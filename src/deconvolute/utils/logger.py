@@ -7,5 +7,7 @@ logger = logging.getLogger("deconvolute")
 logger.addHandler(logging.NullHandler())
 
 
-def get_logger() -> logging.Logger:
+def get_logger(name: str | None = None) -> logging.Logger:
+    if name:
+        return logger.getChild(name)
     return logger
