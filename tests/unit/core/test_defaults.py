@@ -5,6 +5,7 @@ from unittest.mock import MagicMock, patch
 
 from deconvolute.core.defaults import get_guard_defaults, get_scan_defaults
 from deconvolute.detectors.content.language.engine import LanguageDetector
+from deconvolute.detectors.content.signature.engine import SignatureDetector
 from deconvolute.detectors.integrity.canary.engine import CanaryDetector
 
 
@@ -64,5 +65,6 @@ def test_get_scan_defaults_returns_scanning_suite():
     detectors = get_scan_defaults()
 
     assert len(detectors) == 1
-    assert any(isinstance(d, LanguageDetector) for d in detectors)
+    assert any(isinstance(d, SignatureDetector) for d in detectors)
+    assert not any(isinstance(d, LanguageDetector) for d in detectors)
     assert not any(isinstance(d, CanaryDetector) for d in detectors)

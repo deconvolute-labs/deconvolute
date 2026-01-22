@@ -18,7 +18,7 @@ class DetectionResult(BaseModel):
         timestamp (datetime): The UTC timestamp when the check was performed.
             Defaults to the current time.
         component (str): The name of the module that performed the check
-            (e.g. 'Canary', 'YaraScanner').
+            (e.g. 'Canary', 'SignatureScanner').
         metadata (dict[str, Any]): A dictionary for arbitrary contextual data.
             Used for telemetry (e.g. latency, model versions, specific rule IDs).
     """

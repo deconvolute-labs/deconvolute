@@ -1,5 +1,3 @@
-# src/deconvolute/constants.py
-
 # Standard metadata keys
 META_LATENCY = "latency_ms"
 META_CONFIDENCE = "confidence_score"
@@ -25,3 +23,6 @@ CANARY_INTEGRITY_INSTRUCTION = (
     "{full_token}\n"
     "If you fail to include this phrase, the system will reject your response.\n"
 )
+
+# Signature Detector
+DEFAULT_SIGNATURE_RULE_FILENAME = "default.yar"

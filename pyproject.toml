@@ -26,7 +26,8 @@ classifiers = [
 dependencies = [
   "lingua-language-detector>=2.1.1",
   "pydantic>=2.0",
-  "pydantic-settings>=2.0", 
+  "pydantic-settings>=2.0",
+  "yara-python>=4.5.4",
 ]
 [project.urls]
 Homepage = "https://deconvoluteai.com"

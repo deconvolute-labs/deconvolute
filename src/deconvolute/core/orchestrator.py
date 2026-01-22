@@ -173,3 +173,4 @@ def _resolve_configuration(
                 d.api_key = final_key
 
     return detectors
+    return detectors
