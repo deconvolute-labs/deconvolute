@@ -14,9 +14,17 @@ from deconvolute.detectors.base import BaseDetector, DetectionResult
 
 
 @pytest.fixture
-def mock_defaults():
-    """Patches get_standard_detectors to return a safe list."""
-    with patch("deconvolute.core.orchestrator.get_standard_detectors") as mock:
+def mock_guard_defaults():
+    """Patches get_guard_defaults to return a safe list."""
+    with patch("deconvolute.core.orchestrator.get_guard_defaults") as mock:
+        mock.return_value = []
+        yield mock
+
+
+@pytest.fixture
+def mock_scan_defaults():
+    """Patches get_scan_defaults to return a safe list."""
+    with patch("deconvolute.core.orchestrator.get_scan_defaults") as mock:
         mock.return_value = []
         yield mock
 
@@ -72,17 +80,6 @@ def async_clean_client():
     return client
 
 
-def test_resolve_config_defaults():
-    with patch(
-        "deconvolute.core.orchestrator.get_standard_detectors"
-    ) as mock_get_defaults:
-        mock_detector = MagicMock(spec=BaseDetector)
-        mock_get_defaults.return_value = [mock_detector]
-        result = _resolve_configuration(None, None)
-        assert result == [mock_detector]
-        mock_get_defaults.assert_called_once()
-
-
 def test_resolve_config_explicit():
     mock_detector = MagicMock(spec=BaseDetector)
     detectors: list[BaseDetector] = [mock_detector]
@@ -105,7 +102,7 @@ def test_resolve_config_api_key_no_overwrite(mock_detector):
     assert mock_detector.api_key == "existing-key"
 
 
-def test_guard_wrapper_sync(clean_client, mock_defaults):
+def test_guard_wrapper_sync(clean_client, mock_guard_defaults):
     mock_module = MagicMock()
 
     mock_proxy_class = MagicMock()
@@ -119,7 +116,7 @@ def test_guard_wrapper_sync(clean_client, mock_defaults):
         assert result == mock_proxy_class.return_value
 
 
-def test_guard_wrapper_async(async_clean_client, mock_defaults):
+def test_guard_wrapper_async(async_clean_client, mock_guard_defaults):
     mock_module = MagicMock()
     mock_proxy_class = MagicMock()
     mock_module.AsyncOpenAIProxy = mock_proxy_class
@@ -131,7 +128,7 @@ def test_guard_wrapper_async(async_clean_client, mock_defaults):
         assert result == mock_proxy_class.return_value
 
 
-def test_guard_unsupported_client(mock_defaults):
+def test_guard_unsupported_client(mock_guard_defaults):
     client = MagicMock()
     client.__class__.__name__ = "UnknownClient"
     client.__class__.__module__ = "unknown_lib"
@@ -140,7 +137,49 @@ def test_guard_unsupported_client(mock_defaults):
         guard(client)
 
 
-def test_guard_openai_import_error(clean_client, mock_defaults):
+def test_scan_uses_scan_defaults():
+    with patch(
+        "deconvolute.core.orchestrator.get_scan_defaults"
+    ) as mock_get_scan_defaults:
+        mock_detector = MagicMock()
+        mock_detector.check.return_value = MagicMock(threat_detected=False)
+        mock_get_scan_defaults.return_value = [mock_detector]
+
+        scan("test content", detectors=None)
+
+        mock_get_scan_defaults.assert_called_once()
+        mock_detector.check.assert_called_once()
+
+
+def test_guard_uses_guard_defaults():
+    with patch(
+        "deconvolute.core.orchestrator.get_guard_defaults"
+    ) as mock_get_guard_defaults:
+        mock_client = MagicMock()
+        # Mock client type to satisfy inspection checks
+        mock_client.__class__.__module__ = "openai"
+        mock_client.__class__.__name__ = "OpenAI"
+
+        mock_get_guard_defaults.return_value = []
+
+        try:
+            guard(mock_client, detectors=None)
+        except Exception:  # noqa
+            pass
+
+        mock_get_guard_defaults.assert_called_once()
+
+
+def test_scan_unsupported_client(mock_scan_defaults):
+    client = MagicMock()
+    client.__class__.__name__ = "UnknownClient"
+    client.__class__.__module__ = "unknown_lib"
+
+    with pytest.raises(DeconvoluteError, match="Unsupported client type"):
+        guard(client)
+
+
+def test_guard_openai_import_error(clean_client, mock_guard_defaults):
     # Simulate openai being detected by name but failing to import the proxy module
     # This one is hard because guard has a local import for the OpenAIProxy etc.
     original_import = __import__

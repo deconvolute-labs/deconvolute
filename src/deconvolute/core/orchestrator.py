@@ -1,7 +1,7 @@
 import os
 from typing import TypeVar
 
-from deconvolute.core.defaults import get_standard_detectors
+from deconvolute.core.defaults import get_guard_defaults, get_scan_defaults
 from deconvolute.detectors.base import BaseDetector, DetectionResult
 from deconvolute.errors import DeconvoluteError
 from deconvolute.utils.logger import get_logger
@@ -39,8 +39,11 @@ def guard(
         DeconvoluteError: If the client type is unsupported or if the required
             client library is not installed in the environment.
     """
-    # Configuration Resolution
-    # Resolve defaults and inject API keys if needed
+    # Load Defaults if needed
+    if detectors is None:
+        detectors = get_guard_defaults()
+
+    # Inject API Keys
     detectors = _resolve_configuration(detectors, api_key)
 
     # Client Inspection
@@ -76,8 +79,6 @@ def guard(
                 f"Ensure it is installed: {e}"
             ) from e
 
-    # elif "anthropic" in module_name: ...
-
     # Fallback: If we don't recognize the client, we must fail secure.
     raise DeconvoluteError(
         f"Unsupported client type: '{client_type}' from module '{module_name}'. "
@@ -106,6 +107,10 @@ def scan(
         DetectionResult: The result of the first detector that found a threat,
         or a clean result if all passed.
     """
+    # Load Defaults if needed
+    if detectors is None:
+        detectors = get_scan_defaults()
+
     # Resolve config
     detectors = _resolve_configuration(detectors, api_key)
 
@@ -131,6 +136,10 @@ async def a_scan(
     See `scan()` for full documentation. This method is non-blocking and ideal
     for high-throughput async pipelines (FastAPI, LangChain).
     """
+    # Load Defaults if needed
+    if detectors is None:
+        detectors = get_scan_defaults()
+
     detectors = _resolve_configuration(detectors, api_key)
     scanners = [d for d in detectors if hasattr(d, "check")]
 
@@ -143,22 +152,18 @@ async def a_scan(
 
 
 def _resolve_configuration(
-    detectors: list[BaseDetector] | None, api_key: str | None
+    detectors: list[BaseDetector], api_key: str | None
 ) -> list[BaseDetector]:
     """
-    Internal helper to handle default suites and API key injection.
+    Internal helper to inject API keys into configured detectors.
 
     Args:
-        detectors: The user-provided list (or None).
+        detectors: The list of detectors (must not be None).
         api_key: The user-provided API key (or None).
 
     Returns:
-        The final list of configured detectors.
+        The configured detectors with keys injected.
     """
-    # Load Defaults if needed
-    if detectors is None:
-        detectors = get_standard_detectors()
-
     final_key = api_key or os.getenv("DECONVOLUTE_API_KEY")
 
     # We only inject if the key is available and the detector is unconfigured.

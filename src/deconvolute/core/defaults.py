@@ -6,11 +6,22 @@ from deconvolute.utils.logger import get_logger
 logger = get_logger()
 
 
-def get_standard_detectors() -> list[BaseDetector]:
+def get_guard_defaults() -> list[BaseDetector]:
     """
-    Returns the standard suite of defenses (Canary + Language).
+    Returns the standard suite of defenses for conversational guardrails.
+    Includes Integrity (Canary) and Content (Language) checks.
     """
     return [
         CanaryDetector(token_length=16),
+        LanguageDetector(allowed_languages=["en"]),
+    ]
+
+
+def get_scan_defaults() -> list[BaseDetector]:
+    """
+    Returns the standard suite of defenses for static content scanning.
+    Optimized for deep inspection of prompts or documents.
+    """
+    return [
         LanguageDetector(allowed_languages=["en"]),
     ]
