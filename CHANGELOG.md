@@ -1,12 +1,23 @@
+## [0.1.0a7] - 2026-01-22
+
+### 🚀 Features
+
+- Add signature detector using yara (#9)
+
+### ⚙️ Miscellaneous Tasks
+
+- Split default detectors into guard and scan (#8)
 ## [0.1.0a6] - 2026-01-20
 
 ### 🚀 Features
 
+- Add all flag to installation config
 - Implement core orchestration layer and client proxies (#7)
 
 ### ⚙️ Miscellaneous Tasks
 
 - Refactor of detectors into namespaces (#6)
+- Prepare v0.1.0a6
 ## [0.1.0a5] - 2026-01-16
 
 ### 🚀 Features

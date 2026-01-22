@@ -4,7 +4,7 @@ from .detectors.content import LanguageDetector
 from .detectors.integrity import CanaryDetector
 from .errors import DeconvoluteError, ThreatDetectedError
 
-__version__ = "0.1.0a6"
+__version__ = "0.1.0a7"
 
 __all__ = [
     "guard",
