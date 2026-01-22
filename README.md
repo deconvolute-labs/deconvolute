@@ -14,7 +14,7 @@ Deconvolute is a security SDK for large language model systems that gives develo
 
 Instead of preventing attacks, Deconvolute detects specific failure modes, such as lost instructional priority or unexpected language switching, and surfaces them to the developer. This allows you to decide how to handle these events, for example by blocking, logging, discarding content, or triggering custom fallback logic.
 
-Detectors are modular and composable. Each targets a concrete failure mode, and layering multiple detectors provides broader coverage and fine-grained control.
+The SDK provides modular and composable *Detectors* to achieve this. Each Detector targets a concrete failure mode, so layering multiple provides broader coverage and fine-grained control.
 
 > **Note:**
 > Deconvolute is not a prevention system. It detects events and gives developers control over how to respond.
@@ -105,7 +105,7 @@ Deconvolute is currently in alpha development. Some detectors are experimental a
 - Experimental: Functionally complete and unit-tested, but not yet fully validated in production.
 - Validated: Empirically tested with benchmarked results.
 
-For reproducible experiments and detailed performance results of detectors and layered defenses, see the deconvolute-benchmark repo￼.
+For reproducible experiments and detailed performance results of detectors and layered defenses, see the [benchmarks repo](https://github.com/deconvolute-labs/benchmarks).
 
 
 ## Links & Next Steps
