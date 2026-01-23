@@ -5,7 +5,6 @@ from typing import Any
 
 import yara
 
-from deconvolute.constants import DEFAULT_SIGNATURE_RULE_FILENAME
 from deconvolute.detectors.base import BaseDetector, DetectionResult
 from deconvolute.errors import ConfigurationError
 from deconvolute.utils.logger import get_logger
@@ -13,7 +12,7 @@ from deconvolute.utils.logger import get_logger
 logger = get_logger()
 
 
-DEFAULT_RULES_PATH = Path(__file__).parent / "rules" / DEFAULT_SIGNATURE_RULE_FILENAME
+DEFAULT_RULES_DIR = Path(__file__).parent / "rules"
 
 
 class SignatureDetector(BaseDetector):
@@ -24,7 +23,7 @@ class SignatureDetector(BaseDetector):
     It is designed to be the primary defense layer for scanning document ingestion
     pipelines (RAG) or validating raw user inputs.
 
-    By default, it uses the SDK's bundled security baseline (`default.yar`), which
+    By default, it uses the SDK's bundled security baselines in 'rules/', which
     covers common jailbreaks and injection attempts. Users can override this by
     providing a path to their own custom YARA rules file.
 
@@ -47,40 +46,50 @@ class SignatureDetector(BaseDetector):
         malformed.
 
         Args:
-            rules_path: Optional path to a local signature rule file (.yar).
-                If None, the detector loads the internal `default.yar` bundled
-                with the SDK.
+            rules_path: Optional path to a file (.yar) OR a directory of files.
+                If None, loads the SDK's internal 'rules/' directory.
 
         Raises:
             ConfigurationError: If the rule file does not exist or contains syntax
                 errors that prevent compilation.
         """
-        self.local_rules_path = Path(rules_path) if rules_path else DEFAULT_RULES_PATH
-
-        self._rules = None
         self._executor = ThreadPoolExecutor()
 
-        self._load_rules()
+        self.local_path = Path(rules_path) if rules_path else DEFAULT_RULES_DIR
+        self._local_rules = None
+        self._load_local_rules()
 
-    def _load_rules(self) -> None:
+    def _load_local_rules(self) -> None:
         """
         Compiles the local signature rules from disk.
 
         Raises:
             ConfigurationError: Wraps yara.Error if compilation fails.
         """
-        if not self.local_rules_path.exists():
-            raise ConfigurationError(
-                f"Signature rules file not found at: {self.local_rules_path}"
-            )
+        if not self.local_path.exists():
+            raise ConfigurationError(f"Rule path not found: {self.local_path}")
+
+        # Build the dictionary { namespace: file_path }
+        filepaths = {}
+
+        if self.local_path.is_file():
+            # Single file mode (namespace is filename)
+            filepaths[self.local_path.name] = str(self.local_path)
+
+        elif self.local_path.is_dir():
+            # Directory mode: Scan for all .yar files
+            for rule_file in self.local_path.glob("*.yar"):
+                filepaths[rule_file.name] = str(rule_file)
+
+            if not filepaths:
+                logger.warning(f"No .yar files found in {self.local_path}")
+                return
 
         try:
-            self._rules = yara.compile(filepath=str(self.local_rules_path))
-            logger.debug(f"Loaded local signature rules from {self.local_rules_path}")
+            self._local_rules = yara.compile(filepaths=filepaths)
+            logger.debug(f"Compiled {len(filepaths)} local rule files.")
         except yara.Error as e:
-            raise ConfigurationError(
-                f"Failed to compile local signature rules: {e}"
-            ) from e
+            raise ConfigurationError(f"Failed to compile local rules: {e}") from e
 
     def check(self, content: str, **kwargs: Any) -> DetectionResult:
         """
@@ -98,12 +107,11 @@ class SignatureDetector(BaseDetector):
                 - threat_detected (bool): True if any rule matched.
                 - metadata (dict): specific matches, tags, and match count.
         """
-        if not self._rules:
-            # Should not happen given init raises on failure, but safety check
-            return DetectionResult(threat_detected=False, component="SignatureDetector")
+        matches: list[yara.rule | yara.tags | yara.meta] = []
 
-        # Match returns a list of Match objects
-        matches = self._rules.match(data=content)
+        # Scan Local Layer
+        if self._local_rules:
+            matches.extend(self._local_rules.match(data=content))
 
         if not matches:
             return DetectionResult(threat_detected=False, component="SignatureDetector")

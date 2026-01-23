@@ -16,14 +16,6 @@ rule TestRule {
 """
 
 
-def test_init_loads_default_rules_by_default():
-    # We verify it points to the internal default.yar
-    detector = SignatureDetector()
-    assert "default.yar" in str(detector.local_rules_path)
-    # Verify rules are compiled
-    assert detector._rules is not None
-
-
 def test_init_loads_custom_rules(tmp_path):
     # Create a dummy rule file
     rule_file = tmp_path / "custom.yar"
@@ -32,8 +24,59 @@ def test_init_loads_custom_rules(tmp_path):
     detector = SignatureDetector(rules_path=rule_file)
 
     # Check that it loaded OUR file, not the default
-    assert detector.local_rules_path == rule_file
-    assert detector._rules is not None
+    assert detector.local_path == rule_file
+    assert detector._local_rules is not None
+
+
+def test_init_loads_directory_of_rules(tmp_path):
+    # Setup a directory with multiple rule files
+    rules_dir = tmp_path / "my_rules"
+    rules_dir.mkdir()
+
+    # Rule File A
+    (rules_dir / "file_a.yar").write_text("""
+        rule FromFileA {
+            meta:
+                tag = "tag_a"
+            strings:
+                $a = "keyword_a"
+            condition:
+                $a
+        }
+        """)
+
+    # Rule File B
+    (rules_dir / "file_b.yar").write_text("""
+        rule FromFileB {
+            meta:
+                tag = "tag_b"
+            strings:
+                $b = "keyword_b"
+            condition:
+                $b
+        }
+        """)
+
+    # Initialize detector pointing to the DIRECTORY, not a file
+    detector = SignatureDetector(rules_path=rules_dir)
+
+    # Verify it loaded the directory path
+    assert detector.local_path == rules_dir
+    assert detector._local_rules is not None
+
+    # Trigger both rules to ensure they were compiled together
+    result = detector.check("Here is keyword_a and keyword_b in one text.")
+
+    assert result.threat_detected is True
+    assert result.metadata["count"] == 2
+
+    # Check matches from both files
+    assert "FromFileA" in result.metadata["matches"]
+    assert "FromFileB" in result.metadata["matches"]
+
+    # Check tags from both files
+    assert "tag_a" in result.metadata["tags"]
+    assert "tag_b" in result.metadata["tags"]
 
 
 def test_init_raises_error_on_missing_file():
@@ -183,7 +226,7 @@ def test_check_empty_content():
 def test_check_safeguard_no_rules():
     detector = SignatureDetector()
     # Forcefully remove rules to test safeguard
-    detector._rules = None
+    detector._local_rules = None
 
     result = detector.check("something")
 
