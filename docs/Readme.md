@@ -345,7 +345,7 @@ The SignatureDetector applies signature-based detection to text. It is ideal for
 The detector can be configured to use local rule files or a secure remote ruleset (for paid plans).
 
 ```python
-from deconvolute.detectors.content.signature.engine import SignatureDetector
+from deconvolute import SignatureDetector
 
 # Option A: Local Rules (Default)
 # Uses the SDK's built-in basic rules if no path is provided
