@@ -1,12 +1,29 @@
+## [0.1.0a8] - 2026-01-29
+
+### 🚀 Features
+
+- Support multiple local yara files (#10)
+- Add base yara rules for SignatureDetector (#11)
+
+### 📚 Documentation
+
+- Update readme and user guide
+
+### ⚙️ Miscellaneous Tasks
+
+- Update badges
 ## [0.1.0a7] - 2026-01-22
 
 ### 🚀 Features
 
+- Add security policy
 - Add signature detector using yara (#9)
 
 ### ⚙️ Miscellaneous Tasks
 
+- Remove local security policy to inherit from org
 - Split default detectors into guard and scan (#8)
+- Prepare v0.1.0a7
 ## [0.1.0a6] - 2026-01-20
 
 ### 🚀 Features
