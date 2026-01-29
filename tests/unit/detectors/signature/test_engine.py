@@ -98,7 +98,7 @@ def test_init_raises_error_on_invalid_rule_syntax(tmp_path):
 
 
 def test_check_detects_threat_with_defaults():
-    # Test against the actual bundled default.yar
+    # Test against the actual bundled base.yar
     # We know it contains "ignore all previous instructions"
     detector = SignatureDetector()
 
@@ -107,7 +107,7 @@ def test_check_detects_threat_with_defaults():
     assert result.threat_detected is True
     assert result.component == "SignatureDetector"
     assert "PromptInjection_Generic_Directives" in result.metadata["matches"]
-    assert "jailbreak" in result.metadata["tags"]
+    assert "manual" in result.metadata["tags"]
 
 
 def test_check_returns_safe_for_benign_content():
