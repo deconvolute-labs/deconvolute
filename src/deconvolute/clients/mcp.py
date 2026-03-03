@@ -3,6 +3,9 @@ from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from typing import Any
 
+from packaging.specifiers import SpecifierSet
+
+from deconvolute.errors import ServerIdentityError
 from deconvolute.models.observability import ToolData
 
 # We perform top-level imports here because this file is only ever
@@ -22,6 +25,7 @@ except ImportError:
         Tool = Any
         TextContent = Any
         PaginatedRequestParams = Any
+        InitializeResult = Any
 
     types = DummyTypes  # type: ignore
     ClientSession = Any  # type: ignore
@@ -63,6 +67,7 @@ class MCPProxy:
         firewall: MCPFirewall,
         integrity_mode: IntegrityLevel = "snapshot",
         transport_origin: TransportOrigin | None = None,
+        init_result: types.InitializeResult | None = None,
     ) -> None:
         """
         Args:
@@ -75,21 +80,79 @@ class MCPProxy:
         self._integrity_mode = integrity_mode
         self._transport_origin = transport_origin
         self._client_session_id = str(uuid.uuid4())
-        info = getattr(session, "server_info", getattr(session, "serverInfo", None))
-        if info and hasattr(info, "name"):
-            self._firewall.set_server(info.name, self._transport_origin)
+
+        # Hydrate the server identity either from the explicitly injected
+        # initialization result, or attempt to pull it from the session.
+        info = None
+        if init_result:
+            info = getattr(
+                init_result, "server_info", getattr(init_result, "serverInfo", None)
+            )
+        else:
+            info = getattr(session, "server_info", getattr(session, "serverInfo", None))
+
+        self._validate_server_identity(info)
+
+    def _validate_server_identity(self, info: Any) -> None:
+        """
+        Validates the server identity against the security policy.
+        Raises ServerIdentityError if constraints are violated or protocol is invalid.
+        """
+        if not info or not hasattr(info, "name"):
+            return
+
+        server_name = info.name
+        server_version = getattr(info, "version", None)
+
+        # Strict Protocol Compliance Check
+        # The MCP specification requires 'version' to be a string.
+        if not server_version or not isinstance(server_version, str):
+            logger.error(
+                f"Protocol violation: Server '{server_name}' failed to report a "
+                "valid version string."
+            )
+            raise ServerIdentityError(
+                f"Protocol violation: Server '{server_name}' must report a "
+                "version string."
+            )
+
+        # Register the server identity with the firewall
+        self._firewall.set_server(server_name, self._transport_origin)
+
+        # Extract policy for this specific server
+        server_policy = self._firewall.policy.servers.get(server_name)
+
+        # Evaluate version constraints if they exist in the policy
+        if server_policy and server_policy.version:
+            try:
+                specifiers = SpecifierSet(server_policy.version)
+                if server_version not in specifiers:
+                    logger.error(
+                        f"Version mismatch for {server_name}. "
+                        f"Expected {server_policy.version}, got {server_version}."
+                    )
+                    raise ServerIdentityError(
+                        f"Server '{server_name}' version '{server_version}' does not "
+                        "satisfy the security policy constraint: "
+                        f"'{server_policy.version}'."
+                    )
+            except ValueError as e:
+                # Fails closed if the policy contains an invalid SemVer string format
+                raise ServerIdentityError(
+                    f"Invalid version format evaluation for server '{server_name}': {e}"
+                ) from e
 
     async def initialize(self, *args: Any, **kwargs: Any) -> Any:
         """
-        Intercepts session initialization to dynamically extract the server's identity.
+        Intercepts session initialization to dynamically extract the server's identity
+        and enforce version constraints.
         """
         result = await self._session.initialize(*args, **kwargs)
-        # The mcp SDK is in active development. We safely extract the identity
-        # handling both the newer snake_case (server_info)
-        info = getattr(result, "server_info", getattr(result, "serverInfo", None))
 
-        if info and hasattr(info, "name"):
-            self._firewall.set_server(info.name, self._transport_origin)
+        # The mcp SDK is in active development. We safely extract the identity
+        # handling both the newer snake_case (server_info) and older camelCase
+        info = getattr(result, "server_info", getattr(result, "serverInfo", None))
+        self._validate_server_identity(info)
         return result
 
     async def __aenter__(self) -> "MCPProxy":

@@ -102,6 +102,14 @@ class ServerPolicy(BaseModel):
         default=None, description="Optional description of the server"
     )
 
+    version: str | None = Field(
+        default=None,
+        description=(
+            "Optional SemVer constraint for the server version "
+            "(e.g. '>=1.2.0, <2.0.0')."
+        ),
+    )
+
     transport: TransportRule | None = Field(
         default=None, description="Optional strict transport origin validation."
     )
