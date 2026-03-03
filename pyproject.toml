@@ -13,7 +13,7 @@ authors = [
   { name = "David Kirchhoff", email = "david@deconvoluteai.com" },
 ]
 classifiers = [
-  "Development Status :: 3 - Alpha",
+  "Development Status :: 4 - Beta",
   "Intended Audience :: Developers",
   "Topic :: Security",
   "Topic :: Software Development :: Libraries :: Python Modules",
@@ -22,6 +22,7 @@ classifiers = [
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
   "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
 ]
 dependencies = [
   "lingua-language-detector>=2.1.1",
