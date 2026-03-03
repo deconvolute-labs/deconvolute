@@ -67,3 +67,13 @@ class TransportSpoofingError(MCPSessionError):
     """
 
     pass
+
+
+class ServerIdentityError(MCPSessionError):
+    """
+    Raised when the server's identity (e.g. name, version, or cryptographic signature)
+    does not match the expected security policy, indicating a potential spoofing
+    or downgrade attack.
+    """
+
+    pass
