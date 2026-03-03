@@ -22,6 +22,7 @@ default_action: "block"
 servers:
   # Example: A server with granular file access
   github-storage:
+    version: ">=0.1.0", # Optionally add a server version
     tools:
       # PRIORITY 1: Explicitly prevent dangerous actions.
       # Even if we allow other tools later, this specific name is caught first.
