@@ -1,7 +1,10 @@
 import os
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
-from typing import Any, Literal, TypeVar
+from typing import TYPE_CHECKING, Any, Literal, TypeVar
+
+if TYPE_CHECKING:
+    import mcp.types
 
 from deconvolute.constants import DEFAULT_MCP_POLICY_FILENAME
 from deconvolute.core.defaults import get_guard_defaults, get_scan_defaults
@@ -30,7 +33,7 @@ def mcp_guard(
     integrity: Literal["snapshot", "strict"] = "snapshot",
     audit_log: str | None = None,
     transport_origin: TransportOrigin | None = None,
-    init_result: Any | None = None,
+    init_result: "mcp.types.InitializeResult | None" = None,
 ) -> T:
     """
     Wraps an MCP ClientSession with the Deconvolute Firewall.

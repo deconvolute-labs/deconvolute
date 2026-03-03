@@ -25,6 +25,7 @@ except ImportError:
         Tool = Any
         TextContent = Any
         PaginatedRequestParams = Any
+        InitializeResult = Any
 
     types = DummyTypes  # type: ignore
     ClientSession = Any  # type: ignore
@@ -66,7 +67,7 @@ class MCPProxy:
         firewall: MCPFirewall,
         integrity_mode: IntegrityLevel = "snapshot",
         transport_origin: TransportOrigin | None = None,
-        init_result: Any | None = None,
+        init_result: types.InitializeResult | None = None,
     ) -> None:
         """
         Args:
