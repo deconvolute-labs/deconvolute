@@ -23,6 +23,14 @@ def clean_mcp_proxy():
 @pytest.fixture
 def mock_session():
     session = AsyncMock()
+
+    # Mock server_info to avoid validation errors
+    session.server_info = MagicMock()
+    session.server_info.name = "test_server"
+    session.server_info.version = "1.0.0"
+    if hasattr(session, "serverInfo"):
+        del session.serverInfo
+
     # Mock list_tools response structure
     tool_a = MagicMock()
     tool_a.name = "tool_a"
@@ -58,6 +66,7 @@ def mock_firewall():
     firewall.check_tool_call.return_value = SecurityResult(
         component=SecurityComponent.FIREWALL, status=SecurityStatus.SAFE, metadata={}
     )
+    firewall.policy = MagicMock()
     return firewall
 
 

@@ -30,6 +30,7 @@ def mcp_guard(
     integrity: Literal["snapshot", "strict"] = "snapshot",
     audit_log: str | None = None,
     transport_origin: TransportOrigin | None = None,
+    init_result: Any | None = None,
 ) -> T:
     """
     Wraps an MCP ClientSession with the Deconvolute Firewall.
@@ -55,6 +56,9 @@ def mcp_guard(
         audit_log: Optional path to write a JSONL file to record all security events.
             If provided, telemetry (Discovery and Access events) will be written
             to this file asynchronously.
+        init_result: Optional mcp.types.InitializeResult. Pass this if the session
+            was already initialized prior to wrapping, to ensure the firewall
+            can evaluate the server's version and identity.
 
     Returns:
         A CallToolResult with isError=True if the tool is unauthorized.
@@ -121,6 +125,7 @@ def mcp_guard(
             firewall,
             integrity_mode=integrity,
             transport_origin=transport_origin,
+            init_result=init_result,
         ),
     )
 

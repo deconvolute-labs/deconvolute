@@ -49,6 +49,14 @@ def mock_session():
     session = MagicMock()
     session.list_tools = AsyncMock()
     session.call_tool = AsyncMock()
+
+    # Mock server_info to avoid validation errors
+    session.server_info = MagicMock()
+    session.server_info.name = "test_server"
+    session.server_info.version = "1.0.0"  # Requires a valid string now
+    if hasattr(session, "serverInfo"):
+        del session.serverInfo
+
     return session
 
 
@@ -187,6 +195,7 @@ def test_proxy_init_sets_server_from_server_info(mock_mcp_modules, mock_firewall
     # Mock server_info (snake_case)
     class MockInfo:
         name = "test_server_snake"
+        version = "1.0.0"
 
     mock_session.server_info = MockInfo()
     if hasattr(mock_session, "serverInfo"):
@@ -209,6 +218,7 @@ def test_proxy_init_sets_server_from_serverInfo_camel_case(
     # Mock serverInfo (camelCase)
     class MockInfo:
         name = "test_server_camel"
+        version = "1.0.0"
 
     mock_session.serverInfo = MockInfo()
     if hasattr(mock_session, "server_info"):
@@ -237,6 +247,95 @@ def test_proxy_init_no_server_info(mock_mcp_modules, mock_firewall):
 
     # Assert firewall.set_server was NOT called
     mock_firewall.set_server.assert_not_called()
+
+
+def test_validate_server_identity_no_policy_version(
+    mocker, mock_mcp_modules, mock_firewall
+):
+    from deconvolute.clients.mcp import MCPProxy
+
+    mock_session = mocker.MagicMock()
+    mock_session.server_info = mocker.MagicMock(name="test_server", version="1.0.0")
+
+    mock_policy = mocker.MagicMock()
+    mock_policy.servers.get.return_value = mocker.MagicMock(version=None)
+    mock_firewall.policy = mock_policy
+
+    # Should not raise
+    MCPProxy(mock_session, mock_firewall)
+
+
+def test_validate_server_identity_missing_server_version(
+    mocker, mock_mcp_modules, mock_firewall
+):
+    from deconvolute.clients.mcp import MCPProxy
+    from deconvolute.errors import ServerIdentityError
+
+    mock_session = mocker.MagicMock()
+    # Missing version entirely
+    mock_session.server_info = mocker.MagicMock(name="test_server")
+    del mock_session.server_info.version
+
+    with pytest.raises(ServerIdentityError, match="Protocol violation"):
+        MCPProxy(mock_session, mock_firewall)
+
+    # Invalid type for version
+    mock_session.server_info.version = 1.0  # Not a string
+    with pytest.raises(ServerIdentityError, match="Protocol violation"):
+        MCPProxy(mock_session, mock_firewall)
+
+
+def test_validate_server_identity_version_match(
+    mocker, mock_mcp_modules, mock_firewall
+):
+    from deconvolute.clients.mcp import MCPProxy
+
+    mock_session = mocker.MagicMock()
+    mock_session.server_info = mocker.MagicMock(name="test_server", version="1.2.0")
+
+    mock_policy = mocker.MagicMock()
+    mock_policy.servers.get.return_value = mocker.MagicMock(version=">=1.0.0, <2.0.0")
+    mock_firewall.policy = mock_policy
+
+    # Should not raise
+    MCPProxy(mock_session, mock_firewall)
+
+
+def test_validate_server_identity_version_mismatch(
+    mocker, mock_mcp_modules, mock_firewall
+):
+    from deconvolute.clients.mcp import MCPProxy
+    from deconvolute.errors import ServerIdentityError
+
+    mock_session = mocker.MagicMock()
+    mock_session.server_info = mocker.MagicMock(name="test_server", version="2.1.0")
+
+    mock_policy = mocker.MagicMock()
+    mock_policy.servers.get.return_value = mocker.MagicMock(version=">=1.0.0, <2.0.0")
+    mock_firewall.policy = mock_policy
+
+    with pytest.raises(ServerIdentityError, match="does not satisfy"):
+        MCPProxy(mock_session, mock_firewall)
+
+
+def test_validate_server_identity_invalid_policy_format(
+    mocker, mock_mcp_modules, mock_firewall
+):
+    from deconvolute.clients.mcp import MCPProxy
+    from deconvolute.errors import ServerIdentityError
+
+    mock_session = mocker.MagicMock()
+    mock_session.server_info = mocker.MagicMock(name="test_server", version="1.0.0")
+
+    mock_policy = mocker.MagicMock()
+    # Invalid semver constraint format
+    mock_policy.servers.get.return_value = mocker.MagicMock(
+        version="invalid-version-string"
+    )
+    mock_firewall.policy = mock_policy
+
+    with pytest.raises(ServerIdentityError, match="Invalid version format evaluation"):
+        MCPProxy(mock_session, mock_firewall)
 
 
 @pytest.mark.asyncio
