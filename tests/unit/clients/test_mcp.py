@@ -53,7 +53,7 @@ def mock_session():
     # Mock server_info to avoid validation errors
     session.server_info = MagicMock()
     session.server_info.name = "test_server"
-    session.server_info.version = "1.0.0"  # Requires a valid string now
+    session.server_info.version = "1.0.0"
     if hasattr(session, "serverInfo"):
         del session.serverInfo
 

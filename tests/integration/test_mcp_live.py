@@ -32,7 +32,7 @@ class TestLiveMCP:
                 # handles the case of initialization first and then wrapping correctly.
                 await session.initialize()
 
-                # Wrap with security guard - using local test policy
+                # Wrap with security guard using local test policy
                 policy_path = os.path.join(
                     os.path.dirname(__file__), "policy_allow_echo.yaml"
                 )
