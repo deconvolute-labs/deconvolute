@@ -1,8 +1,28 @@
+## [0.1.0b2] - 2026-03-03
+
+### 🚀 Features
+
+- Add better error handling for policy
+- Add mcp server version to policy and strictly require version string from server
+- Add support for Python 3.14
+
+### 📚 Documentation
+
+- Update documentation
+
+### ⚙️ Miscellaneous Tasks
+
+- Fix workflow
+- Update url
 ## [0.1.0b1] - 2026-02-25
 
 ### 🚀 Features
 
 - Add regression tests to track and validate changes against upstream mcp sdk
+
+### ⚙️ Miscellaneous Tasks
+
+- Prepare v0.1.0b1
 ## [0.1.0a15] - 2026-02-24
 
 ### 🚀 Features
