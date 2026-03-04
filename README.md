@@ -16,7 +16,9 @@
 </h3>
 
 
-When your AI agent calls tools on an MCP server, how do you know that `read_file` tool you discovered at session start is the same tool being executed 10 turns later? Deconvolute cryptographically seals tool definitions at discovery time to prevent tampering during execution, blocking infrastructure attacks that stateless scanners miss.
+When your AI agent calls tools on an MCP server, how do you know that `read_file` tool you discovered at session start is the same tool being executed 10 turns later? 
+
+Deconvolute is a runtime firewall that wraps your MCP session with cryptographic integrity checks. It seals tool definitions at discovery and validates them at execution, preventing protocol-level attacks that happen before any network call is made.
 
 > [!IMPORTANT]
 > Public Beta: The core API and security policies are stable. Currently seeking feedback.
@@ -56,6 +58,7 @@ result = await safe_session.call_tool("execute_code", code="import os; os.system
 
 if result.isError:
     print(f"Firewall blocked: {result.content[0].text}")
+    # Protection happens at the application layer. The server never receives the request.
 
 ```
 
