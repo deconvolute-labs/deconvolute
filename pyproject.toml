@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "deconvolute"
 dynamic = ["version"]
-description = "Real-time security layer protecting AI Agents from Confused Deputy attacks, malicious MCP payloads, and Indirect Prompt Injection."
+description = "MCP firewall for AI Agents. Blocks rug pull attacks, tool poisoning, and prompt injection via schema integrity checks and policy-as-code."
 readme = "README.md"
 requires-python = ">=3.11"
 license = "Apache-2.0"
@@ -15,6 +15,13 @@ authors = [
 classifiers = [
   "Development Status :: 4 - Beta",
   "Intended Audience :: Developers",
+  "Intended Audience :: Information Technology",
+  "Intended Audience :: System Administrators",
+
+  "Topic :: Security",
+  "Topic :: Security :: Cryptography",
+  "Topic :: Software Development :: Libraries :: Python Modules",
+  "Topic :: Internet",
   "Topic :: Security",
   "Topic :: Software Development :: Libraries :: Python Modules",
   "Topic :: Software Development :: Quality Assurance",
@@ -23,6 +30,7 @@ classifiers = [
   "Programming Language :: Python :: 3.12",
   "Programming Language :: Python :: 3.13",
   "Programming Language :: Python :: 3.14",
+  "Programming Language :: Python :: 3 :: Only",
 ]
 dependencies = [
   "lingua-language-detector>=2.1.1",

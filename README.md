@@ -1,6 +1,6 @@
 # Deconvolute: The MCP Application Firewall
 
-**Secure your MCP agents against tool shadowing, rug pulls, and confused deputy attacks with a single wrapper.**
+**Secure your MCP agents against tool shadowing, rug pulls, and credential theft with a single wrapper.**
 
 [![CI](https://github.com/deconvolute-labs/deconvolute/actions/workflows/ci.yml/badge.svg)](https://github.com/deconvolute-labs/deconvolute/actions/workflows/ci.yml)
 [![License](https://img.shields.io/pypi/l/deconvolute.svg)](https://pypi.org/project/deconvolute/)
@@ -11,17 +11,15 @@
 
 <h3>
 
-[User Guide & API Docs](https://docs.deconvolutelabs.com?utm_source=github.com&utm_campaign=header&utm_medium=readme) | [Homepage](https://deconvolutelabs.com?utm_source=github.com&utm_campaign=header&utm_medium=readme)
-
+[User Guide & API Docs](https://docs.deconvolutelabs.com?utm_source=github.com&utm_campaign=header&utm_medium=readme) | [Homepage](https://deconvolutelabs.com?utm_source=github.com&utm_campaign=header&utm_medium=readme) | [Watch MCP Rug Pull Demo](https://www.youtube.com/watch?v=8jjx-U-4FAA)
 </h3>
-
 
 When your AI agent calls tools on an MCP server, how do you know that `read_file` tool you discovered at session start is the same tool being executed 10 turns later? 
 
 Deconvolute is a runtime firewall that wraps your MCP session with cryptographic integrity checks. It seals tool definitions at discovery and validates them at execution, preventing protocol-level attacks that happen before any network call is made.
 
 > [!IMPORTANT]
-> Public Beta: The core API and security policies are stable. Currently seeking feedback.
+> Public Beta: Core API and security policies are stable. Production use welcome. Please report issues on GitHub.
 
 ## Quick Start
 
@@ -194,7 +192,7 @@ We rely on empirical validation rather than heuristics. Our scanners are benchma
 | :--- | :--- | :--- | :--- |
 | `CanaryScanner` | Instruction Adherence | ![Status: Experimental](https://img.shields.io/badge/Status-Experimental-orange) | Active integrity checks using cryptographic tokens to detect jailbreaks. |
 | `LanguageScanner` | Output Policy | ![Status: Experimental](https://img.shields.io/badge/Status-Experimental-orange) | Ensures output language matches expectations and prevents payload-splitting attacks. |
-| `SignatureScanner` | Prompt Injection / RAG Poisoning | ![Status: Validated](https://img.shields.io/badge/Status-Experimental-orange) | Detects known patterns via signature matching. |
+| `SignatureScanner` | Prompt Injection / RAG Poisoning | ![Status: Experimental](https://img.shields.io/badge/Status-Experimental-orange) | Detects known patterns via signature matching. |
 
 **Status guide:**
 - **Experimental**: Functionally complete and unit-tested, but not yet fully validated in production.
@@ -205,7 +203,7 @@ For reproducible experiments and performance metrics, see the [Benchmarks Reposi
 ## Documentation & Resources
 
 - [User Guide & API Docs](https://docs.deconvolutelabs.com?utm_source=github.com&utm_campaign=resources&utm_medium=readme): Detailed code examples, configuration options, and integration patterns
-- [The Hidden Attack Surfaces of RAG and Agentic MCP](https://deconvoluteai.com/blog/attack-surfaces-rag?utm_source=github.com&utm_medium=readme&utm_campaign=deconvolute): Overview of RAG attack surfaces and security considerations
+- [The Hidden Attack Surfaces of RAG and Agentic MCP](https://deconvolutelabs.com/blog/attack-surfaces-rag?utm_source=github.com&utm_medium=readme&utm_campaign=deconvolute): Overview of RAG attack surfaces and security considerations
 - [Benchmarks Repository](https://github.com/deconvolute-labs/benchmarks): Reproducible experiments and layered scanner performance results
 - [Yara-Gen](https://github.com/deconvolute-labs/yara-gen): CLI tool to generate YARA rules from adversarial and benign text samples
 - [CONTRIBUTING.md](CONTRIBUTING.md): Guidelines for building, testing, or contributing to the project
