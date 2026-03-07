@@ -6,7 +6,10 @@ from typing import Any
 from packaging.specifiers import SpecifierSet
 
 from deconvolute.errors import ServerIdentityError
-from deconvolute.models.observability import AuditEventType, ToolData
+from deconvolute.models.observability import (
+    TelemetryEventType,
+    ToolData,
+)
 
 # We perform top-level imports here because this file is only ever
 # imported if the user explicitly calls 'mcp_guard()', which implies
@@ -118,7 +121,9 @@ class MCPProxy:
 
         # Register the server identity with the firewall
         self._firewall.set_server(
-            server_name, self._transport_origin, server_version=server_version
+            server_name,
+            server_version=server_version,
+            transport_origin=self._transport_origin,
         )
 
         # Extract policy for this specific server
@@ -265,7 +270,7 @@ class MCPProxy:
                 server_info=server_details,
             )
             backend.log_event(
-                AuditEventType.TOOL_DISCOVERY, event.model_dump(mode="json")
+                TelemetryEventType.SESSION_DISCOVERY, event.model_dump(mode="json")
             )
 
         # Reconstruct the result
@@ -362,7 +367,8 @@ class MCPProxy:
                             metadata=sec_result.metadata,
                         )
                         backend.log_event(
-                            AuditEventType.TOOL_EXECUTION, event.model_dump(mode="json")
+                            TelemetryEventType.SESSION_ACCESS,
+                            event.model_dump(mode="json"),
                         )
 
                     logger.warning(
@@ -410,7 +416,8 @@ class MCPProxy:
                             },
                         )
                         backend.log_event(
-                            AuditEventType.TOOL_EXECUTION, event.model_dump(mode="json")
+                            TelemetryEventType.SESSION_ACCESS,
+                            event.model_dump(mode="json"),
                         )
 
         # Security Check
@@ -456,7 +463,7 @@ class MCPProxy:
                 metadata=sec_result.metadata,
             )
             backend.log_event(
-                AuditEventType.TOOL_EXECUTION, event.model_dump(mode="json")
+                TelemetryEventType.SESSION_ACCESS, event.model_dump(mode="json")
             )
 
         if sec_result.status == SecurityStatus.UNSAFE:

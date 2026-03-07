@@ -38,15 +38,15 @@ class MCPFirewall:
             policy: The loaded and validated SecurityPolicy object.
         """
         self.policy = policy
-        self.registry = MCPSessionRegistry(server_name="")
+        self.registry = MCPSessionRegistry()
         self.server_name: str | None = None
         self._compiled_rules: list[CompiledRule] = []
 
     def set_server(
         self,
         server_name: str,
-        transport_origin: TransportOrigin | None = None,
         server_version: str = "unknown",
+        transport_origin: TransportOrigin | None = None,
     ) -> None:
         """
         Dynamically configures the firewall by compiling rules for the given server

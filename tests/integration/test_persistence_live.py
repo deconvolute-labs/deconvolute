@@ -13,7 +13,7 @@ from deconvolute import secure_stdio_session
 # These imports are essential to the tests
 from deconvolute.constants import DECONVOLUTE_API_KEY
 from deconvolute.core.persistence import DATABASE_NAME
-from deconvolute.models.observability import AuditEventType
+from deconvolute.models.observability import SecurityEventType
 
 
 @pytest.fixture
@@ -82,7 +82,7 @@ async def test_state_hydration(isolated_cache_dir, server_params, policy_path):
 
         cursor.execute(
             "SELECT COUNT(*) as count FROM audit_queue WHERE event_type=?",
-            (AuditEventType.TOOL_DISCOVERED,),
+            (SecurityEventType.TOOL_PINNED,),
         )
         discovery_count_1 = cursor.fetchone()["count"]
         # The telemetry worker hooks in and creates 1 event per tool
@@ -93,14 +93,14 @@ async def test_state_hydration(isolated_cache_dir, server_params, policy_path):
         await session.initialize()
         await session.list_tools()
 
-    # 4. Assert 2: Assert audit_queue does not contain duplicate TOOL_DISCOVERED events
+    # 4. Assert 2: Assert audit_queue does not contain duplicate TOOL_PINNED events
     with sqlite3.connect(db_path) as conn:
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
 
         cursor.execute(
             "SELECT COUNT(*) as count FROM audit_queue WHERE event_type=?",
-            (AuditEventType.TOOL_DISCOVERED,),
+            (SecurityEventType.TOOL_PINNED,),
         )
         discovery_count_2 = cursor.fetchone()["count"]
         # Count should remain 2, proving the tools were hydrated and not re-discovered.
@@ -131,7 +131,7 @@ async def test_worker_lifecycle(
         assert worker._thread is not None
         assert worker._thread.is_alive()
 
-        # Trigger a security event (UNREGISTERED_TOOL_EXECUTION)
+        # Trigger a security event (UNREGISTERED_ACCESS)
         result = await session.call_tool("haxor_tool", arguments={})
         assert result.isError is True
 
@@ -151,9 +151,9 @@ async def test_worker_lifecycle(
 
         cursor.execute(
             "SELECT sync_status FROM audit_queue WHERE event_type=?",
-            (AuditEventType.UNREGISTERED_TOOL_EXECUTION,),
+            (SecurityEventType.UNREGISTERED_ACCESS,),
         )
         rows = cursor.fetchall()
-        assert len(rows) > 0, "No UNREGISTERED_TOOL_EXECUTION events found"
+        assert len(rows) > 0, "No UNREGISTERED_ACCESS events found"
         for row in rows:
             assert row["sync_status"] == "COMPLETED"

@@ -17,7 +17,7 @@ class BaseObservabilityBackend(abc.ABC):
 
         Args:
             event_type (str): A string categorizing the event
-                (e.g. 'TOOL_EXECUTION', 'SCAN_RESULT', 'TOOL_DISCOVERED').
+                (e.g. 'SESSION_DISCOVERY', 'SESSION_ACCESS').
             payload (dict[str, Any]): A dictionary containing the full context
                 of the event. This must be JSON serializable.
         """

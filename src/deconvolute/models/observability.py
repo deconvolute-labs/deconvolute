@@ -8,17 +8,26 @@ from pydantic import BaseModel, Field
 from deconvolute.models.security import SecurityStatus
 
 
-class AuditEventType(StrEnum):
+class TelemetryEventType(StrEnum):
     """
-    Categorizes security and telemetry events for the audit outbox.
+    High-level session traffic events emitted by the MCP Proxy.
+    These track the aggregate actions performed by the AI agent.
     """
 
-    TOOL_DISCOVERED = "TOOL_DISCOVERED"
-    TOOL_DISCOVERY = "TOOL_DISCOVERY"
-    TOOL_INTEGRITY_VIOLATION = "TOOL_INTEGRITY_VIOLATION"
-    UNREGISTERED_TOOL_EXECUTION = "UNREGISTERED_TOOL_EXECUTION"
-    TOOL_EXECUTION = "TOOL_EXECUTION"
-    RUNTIME_INTEGRITY_VIOLATION = "RUNTIME_INTEGRITY_VIOLATION"
+    SESSION_DISCOVERY = "SESSION_DISCOVERY"
+    SESSION_ACCESS = "SESSION_ACCESS"
+
+
+class SecurityEventType(StrEnum):
+    """
+    Low-level forensic events emitted by the security engine.
+    These track granular firewall triggers and database lifecycle events.
+    """
+
+    TOOL_PINNED = "TOOL_PINNED"
+    INTEGRITY_VIOLATION = "INTEGRITY_VIOLATION"
+    UNREGISTERED_ACCESS = "UNREGISTERED_ACCESS"
+    RUNTIME_VIOLATION = "RUNTIME_VIOLATION"
 
 
 class ToolData(BaseModel):

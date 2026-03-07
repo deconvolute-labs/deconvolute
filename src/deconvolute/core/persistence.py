@@ -180,7 +180,7 @@ class SQLiteStore:
         Records a security event and wakes up the background sync worker.
 
         Args:
-            event_type (str): Categorizes the event (e.g. 'TOOL_DISCOVERED').
+            event_type (str): Categorizes the event (e.g. 'TOOL_PINNED').
             payload (dict): A dictionary containing the full context of the event,
                 which will be serialized to JSON.
         """

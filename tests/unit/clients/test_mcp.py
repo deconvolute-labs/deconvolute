@@ -209,7 +209,7 @@ def test_proxy_init_sets_server_from_server_info(mock_mcp_modules, mock_firewall
 
     # Assert firewall.set_server was called with correct name
     mock_firewall.set_server.assert_called_once_with(
-        "test_server_snake", None, server_version="1.0.0"
+        "test_server_snake", server_version="1.0.0", transport_origin=None
     )
 
 
@@ -234,7 +234,7 @@ def test_proxy_init_sets_server_from_serverInfo_camel_case(
 
     # Assert firewall.set_server was called with correct name
     mock_firewall.set_server.assert_called_once_with(
-        "test_server_camel", None, server_version="1.0.0"
+        "test_server_camel", server_version="1.0.0", transport_origin=None
     )
 
 

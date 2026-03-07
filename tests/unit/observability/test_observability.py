@@ -11,8 +11,8 @@ import deconvolute.observability
 from deconvolute.constants import DECONVOLUTE_CACHE_DIR
 from deconvolute.models.observability import (
     AccessEvent,
-    AuditEventType,
     DiscoveryEvent,
+    TelemetryEventType,
     ToolData,
 )
 from deconvolute.models.security import SecurityStatus
@@ -54,7 +54,8 @@ def test_local_observability_backend_writes(monkeypatch):
             server_info={"version": "1.0"},
         )
         backend.log_event(
-            AuditEventType.TOOL_DISCOVERY, discovery_event.model_dump(mode="json")
+            TelemetryEventType.SESSION_DISCOVERY,
+            discovery_event.model_dump(mode="json"),
         )
 
         # Test Access Event
@@ -65,7 +66,7 @@ def test_local_observability_backend_writes(monkeypatch):
             metadata={"latency": 0.1},
         )
         backend.log_event(
-            AuditEventType.TOOL_EXECUTION, access_event.model_dump(mode="json")
+            TelemetryEventType.SESSION_ACCESS, access_event.model_dump(mode="json")
         )
 
         # Verify Database Content
@@ -79,14 +80,14 @@ def test_local_observability_backend_writes(monkeypatch):
             rows = conn.execute("SELECT * FROM audit_queue ORDER BY id ASC").fetchall()
 
             assert len(rows) == 2
-            assert rows[0]["event_type"] == AuditEventType.TOOL_DISCOVERY
+            assert rows[0]["event_type"] == TelemetryEventType.SESSION_DISCOVERY
             data1 = json.loads(rows[0]["payload"])
             assert data1.get("type") == "discovery" or "tools_found_count" in data1
             assert data1["tools_found_count"] == 10
             assert data1["tools_allowed"][0]["name"] == "tool_a"
             assert data1["tools_allowed"][1]["name"] == "tool_b"
 
-            assert rows[1]["event_type"] == AuditEventType.TOOL_EXECUTION
+            assert rows[1]["event_type"] == TelemetryEventType.SESSION_ACCESS
             data2 = json.loads(rows[1]["payload"])
             assert data2.get("type") == "access" or "tool_name" in data2
             assert data2["tool_name"] == "tool_a"
@@ -105,10 +106,12 @@ def test_local_observability_backend_handles_errors(caplog):
             reason="test",
         )
         # Should not raise exception, but log error
-        backend.log_event(AuditEventType.TOOL_EXECUTION, event.model_dump(mode="json"))
+        backend.log_event(
+            TelemetryEventType.SESSION_ACCESS, event.model_dump(mode="json")
+        )
 
     assert (
-        "Failed to write audit event 'TOOL_EXECUTION' to SQLite: DB fully broken"
+        "Failed to write audit event 'SESSION_ACCESS' to SQLite: DB fully broken"
         in caplog.text
     )
 

@@ -7,7 +7,7 @@ import pytest
 from deconvolute.constants import DECONVOLUTE_API_KEY
 from deconvolute.core.mcp_session import MCPSessionRegistry
 from deconvolute.errors import MCPSessionError
-from deconvolute.models.observability import AuditEventType
+from deconvolute.models.observability import SecurityEventType
 
 
 class TestMCPSessionRegistry:
@@ -206,7 +206,7 @@ class TestMCPSessionRegistry:
                     mock_log.assert_called_once()
 
                     event_type = mock_log.call_args[1]["event_type"]
-                    assert event_type == AuditEventType.TOOL_DISCOVERED
+                    assert event_type == SecurityEventType.TOOL_PINNED
 
     def test_verify_logs_unregistered_tool(self, registry):
         """Test that attempting to verify an unknown tool audits an event."""
@@ -217,7 +217,7 @@ class TestMCPSessionRegistry:
             mock_log.assert_called_once()
             assert (
                 mock_log.call_args[1]["event_type"]
-                == AuditEventType.UNREGISTERED_TOOL_EXECUTION
+                == SecurityEventType.UNREGISTERED_ACCESS
             )
 
     def test_verify_logs_integrity_violation(self, registry):
@@ -234,5 +234,5 @@ class TestMCPSessionRegistry:
             mock_log.assert_called_once()
             assert (
                 mock_log.call_args[1]["event_type"]
-                == AuditEventType.TOOL_INTEGRITY_VIOLATION
+                == SecurityEventType.INTEGRITY_VIOLATION
             )

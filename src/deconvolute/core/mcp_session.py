@@ -11,7 +11,7 @@ from deconvolute.constants import DECONVOLUTE_API_KEY
 from deconvolute.core.persistence import SQLiteStore
 from deconvolute.core.types import ToolInterface
 from deconvolute.errors import MCPSessionError
-from deconvolute.models.observability import AuditEventType
+from deconvolute.models.observability import SecurityEventType
 from deconvolute.observability.worker import TelemetrySyncWorker
 from deconvolute.utils.logger import get_logger
 
@@ -178,7 +178,7 @@ class MCPSessionRegistry:
             logger.info(f"Discovering and pinning new tool: {name}")
             self.store.pin_tool(self.server_name, self.server_version, name, tool_hash)
             self.store.log_audit_event(
-                event_type=AuditEventType.TOOL_DISCOVERED,
+                event_type=SecurityEventType.TOOL_PINNED,
                 payload={
                     "server_name": self.server_name,
                     "server_version": self.server_version,
@@ -233,7 +233,7 @@ class MCPSessionRegistry:
         if not snapshot:
             logger.warning(f"SessionRegistry: Tool '{tool_name}' is not registered.")
             self.store.log_audit_event(
-                event_type=AuditEventType.UNREGISTERED_TOOL_EXECUTION,
+                event_type=SecurityEventType.UNREGISTERED_ACCESS,
                 payload={
                     "server_name": self.server_name,
                     "server_version": self.server_version,
@@ -253,7 +253,7 @@ class MCPSessionRegistry:
                     f"Expected {snapshot.definition_hash[:8]}, got {current_hash[:8]}."
                 )
                 self.store.log_audit_event(
-                    event_type=AuditEventType.TOOL_INTEGRITY_VIOLATION,
+                    event_type=SecurityEventType.INTEGRITY_VIOLATION,
                     payload={
                         "server_name": self.server_name,
                         "server_version": self.server_version,

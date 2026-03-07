@@ -30,8 +30,8 @@ class LocalObservabilityBackend(BaseObservabilityBackend):
         Records a telemetry event to the database.
 
         Args:
-            event_type (str): Categorizes the event (e.g. 'TOOL_EXECUTION',
-                'SCAN_RESULT').
+            event_type (str): Categorizes the event (e.g. 'SESSION_DISCOVERY',
+                'SESSION_ACCESS').
             payload (dict[str, Any]): The full contextual payload to record.
         """
         try:
