@@ -131,17 +131,16 @@ tools:
 
 CEL is the same highly performant, memory-safe language used by Kubernetes and Envoy, ensuring your AI agents remain strictly bounded.
 
-### Audit Logging
+### Event Logging
 
-Deconvolute can produce a detailed audit log of every tool discovery and execution event, useful for debugging policy issues and maintaining a security paper trail.
+Deconvolute automatically records every tool discovery and execution event, giving you a durable audit record for debugging and forensic analysis.
 
 ```python
-# Enable local JSONL logging
-safe_session = mcp_guard(
-    original_session,
-    audit_log="./logs/security_events.jsonl"
-)
+# Event logging is automatic
+safe_session = mcp_guard(original_session)
 ```
+
+The local event log is capped at 10,000 events. To customize storage location, see [Observability & Auditing](https://docs.deconvolutelabs.com/docs/mcp-firewall/observability-auditing?utm_source=github.com&utm_medium=readme&utm_campaign=deconvolute) in the documentation.
 
 ## Defense in Depth
 
