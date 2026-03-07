@@ -57,12 +57,13 @@ class MCPSessionRegistry:
     tool integrity during execution while backing state to a local SQLite database.
     """
 
-    def __init__(self, server_name: str) -> None:
+    def __init__(self, server_name: str | None = None) -> None:
         """
         Initializes the MCP session registry.
 
         Args:
-            server_name (str): The identifier of the connected MCP server.
+            server_name (str | None): The identifier of the connected MCP server. Can
+            be injected via `set_server_name` after the handshake.
         """
         self.server_name = server_name
         self.store = SQLiteStore()
@@ -144,6 +145,8 @@ class MCPSessionRegistry:
         name = tool_def.get("name")
         if not name:
             raise MCPSessionError("Cannot register a tool without a name.")
+        if not self.server_name:
+            raise MCPSessionError("Cannot register a tool without a server name.")
 
         # In-memory check: skip if we already loaded it this session
         # Trust On First Use
@@ -208,6 +211,9 @@ class MCPSessionRegistry:
             bool: True if the tool is known and matches the authoritative hash.
                 False if the tool is unknown or has been tampered with.
         """
+        if not self.server_name:
+            logger.error("Attempted to verify tool before server name was set.")
+            return False
         snapshot = self._tools.get(tool_name)
 
         # Unknown tool check (shadowing / hallucination)
