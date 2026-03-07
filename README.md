@@ -18,9 +18,6 @@ When your AI agent calls tools on an MCP server, how do you know that `read_file
 
 Deconvolute is a runtime firewall that wraps your MCP session with cryptographic integrity checks. It seals tool definitions at discovery and validates them at execution, preventing protocol-level attacks that happen before any network call is made.
 
-> [!IMPORTANT]
-> Public Beta: Core API and security policies are stable. Production use welcome. Please report issues on GitHub.
-
 ## Quick Start
 
 Install the SDK:

@@ -1,3 +1,13 @@
+## [0.1.1] - 2026-03-07
+
+### 🚀 Features
+
+- Add session persistence and improve event logging for servers and tools
+
+### 📚 Documentation
+
+- Update readme
+- Update descriptions
 ## [0.1.0b2] - 2026-03-03
 
 ### 🚀 Features
@@ -14,6 +24,7 @@
 
 - Fix workflow
 - Update url
+- Prepare v0.1.0b2
 ## [0.1.0b1] - 2026-02-25
 
 ### 🚀 Features
