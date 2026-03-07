@@ -1,8 +1,8 @@
+import asyncio
 import os
 import sqlite3
 import sys
 import tempfile
-import time
 
 import pytest
 import yaml
@@ -136,7 +136,7 @@ async def test_worker_lifecycle(
         assert result.isError is True
 
         # Let the worker catch up to the signal
-        time.sleep(0.2)
+        await asyncio.sleep(0.2)
 
     # Prove atexit or context teardown works
     worker.stop()
