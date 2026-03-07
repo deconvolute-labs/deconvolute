@@ -1,16 +1,19 @@
 import hashlib
 import json
+from unittest.mock import patch
 
 import pytest
 
+from deconvolute.constants import DECONVOLUTE_API_KEY
 from deconvolute.core.mcp_session import MCPSessionRegistry
 from deconvolute.errors import MCPSessionError
+from deconvolute.models.observability import SecurityEventType
 
 
 class TestMCPSessionRegistry:
     @pytest.fixture
     def registry(self):
-        return MCPSessionRegistry()
+        return MCPSessionRegistry("test_server", "1.0.0")
 
     def test_initialization(self, registry):
         """Test that the registry starts empty."""
@@ -156,3 +159,80 @@ class TestMCPSessionRegistry:
         tools_view = registry.all_tools
         tools_view["tool_c"] = "fake"
         assert "tool_c" not in registry.all_tools
+
+    def test_initialize_sync_with_api_key(self, monkeypatch):
+        """Test that the background worker is initialized when API key is present."""
+        monkeypatch.setenv(DECONVOLUTE_API_KEY, "fake-key")
+
+        with patch(
+            "deconvolute.core.mcp_session.TelemetrySyncWorker"
+        ) as mock_worker_class:
+            registry = MCPSessionRegistry("test_server")
+
+            mock_worker_class.assert_called_once_with(registry.store)
+            mock_worker_instance = mock_worker_class.return_value
+            mock_worker_instance.start.assert_called_once()
+            assert registry.worker is mock_worker_instance
+
+    def test_initialize_sync_without_api_key(self, monkeypatch):
+        """Test that sync strictly operates offline when no key is configured."""
+        monkeypatch.delenv(DECONVOLUTE_API_KEY, raising=False)
+
+        with patch(
+            "deconvolute.core.mcp_session.TelemetrySyncWorker"
+        ) as mock_worker_class:
+            registry = MCPSessionRegistry("test_server")
+
+            mock_worker_class.assert_not_called()
+            assert registry.worker is None
+
+    def test_register_pins_and_logs_new_tool(self, registry):
+        """
+        Test that registering a completely new tool pins it in SQLite and audits it.
+        """
+        tool_def = {"name": "fresh_tool", "description": "new"}
+
+        with patch.object(registry.store, "get_pinned_hash", return_value=None):
+            with patch.object(registry.store, "pin_tool") as mock_pin:
+                with patch.object(registry.store, "log_audit_event") as mock_log:
+                    registry.register(tool_def)
+
+                    # Compute expected hash manually
+                    expected_hash = registry.compute_hash(tool_def)
+
+                    mock_pin.assert_called_once_with(
+                        "test_server", "1.0.0", "fresh_tool", expected_hash
+                    )
+                    mock_log.assert_called_once()
+
+                    event_type = mock_log.call_args[1]["event_type"]
+                    assert event_type == SecurityEventType.TOOL_PINNED
+
+    def test_verify_logs_unregistered_tool(self, registry):
+        """Test that attempting to verify an unknown tool audits an event."""
+        with patch.object(registry.store, "log_audit_event") as mock_log:
+            result = registry.verify("ghost_tool")
+
+            assert result is False
+            mock_log.assert_called_once()
+            assert (
+                mock_log.call_args[1]["event_type"]
+                == SecurityEventType.UNREGISTERED_ACCESS
+            )
+
+    def test_verify_logs_integrity_violation(self, registry):
+        """Test that verifying a tampered tool audits a violation."""
+        tool_def = {"name": "good_tool", "description": "benign"}
+        registry.register(tool_def)
+
+        tampered_def = {"name": "good_tool", "description": "malicious"}
+
+        with patch.object(registry.store, "log_audit_event") as mock_log:
+            result = registry.verify("good_tool", tampered_def)
+
+            assert result is False
+            mock_log.assert_called_once()
+            assert (
+                mock_log.call_args[1]["event_type"]
+                == SecurityEventType.INTEGRITY_VIOLATION
+            )

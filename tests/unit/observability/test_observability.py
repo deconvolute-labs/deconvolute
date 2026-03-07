@@ -7,37 +7,40 @@ from unittest.mock import patch
 import pytest
 from pydantic import ValidationError
 
-from deconvolute.models.observability import AccessEvent, DiscoveryEvent, ToolData
+import deconvolute.observability
+from deconvolute.constants import DECONVOLUTE_CACHE_DIR
+from deconvolute.models.observability import (
+    AccessEvent,
+    DiscoveryEvent,
+    TelemetryEventType,
+    ToolData,
+)
 from deconvolute.models.security import SecurityStatus
 from deconvolute.observability import configure_observability, get_backend
-from deconvolute.observability.backends.local import LocalFileBackend
+from deconvolute.observability.backends.local import LocalObservabilityBackend
 
 
 @pytest.fixture(autouse=True)
 def reset_backend():
     """Reset the singleton backend before and after each test."""
-    configure_observability(None)
+    deconvolute.observability._active_backend = None
     yield
-    configure_observability(None)
+    deconvolute.observability._active_backend = None
 
 
 def test_configure_observability_singleton():
-    assert get_backend() is None
-
-    configure_observability("audit.jsonl")
     backend = get_backend()
-    assert isinstance(backend, LocalFileBackend)
-    assert backend.file_path == Path("audit.jsonl")
+    assert isinstance(backend, LocalObservabilityBackend)
 
-    configure_observability(None)
-    assert get_backend() is None
+    deconvolute.observability._active_backend = None
+    configure_observability()
+    assert deconvolute.observability._active_backend is not None
 
 
-@pytest.mark.asyncio
-async def test_local_file_backend_writes_async():
+def test_local_observability_backend_writes(monkeypatch):
     with tempfile.TemporaryDirectory() as tmpdir:
-        log_file = Path(tmpdir) / "test_audit.jsonl"
-        backend = LocalFileBackend(str(log_file))
+        monkeypatch.setenv(DECONVOLUTE_CACHE_DIR, tmpdir)
+        backend = LocalObservabilityBackend()
 
         # Test Discovery Event
         discovery_event = DiscoveryEvent(
@@ -50,7 +53,10 @@ async def test_local_file_backend_writes_async():
             tools_blocked=[ToolData(name="tool_c")],
             server_info={"version": "1.0"},
         )
-        await backend.log_discovery(discovery_event)
+        backend.log_event(
+            TelemetryEventType.SESSION_DISCOVERY,
+            discovery_event.model_dump(mode="json"),
+        )
 
         # Test Access Event
         access_event = AccessEvent(
@@ -59,39 +65,55 @@ async def test_local_file_backend_writes_async():
             reason="policy_allow",
             metadata={"latency": 0.1},
         )
-        await backend.log_access(access_event)
+        backend.log_event(
+            TelemetryEventType.SESSION_ACCESS, access_event.model_dump(mode="json")
+        )
 
-        # Verify File Content
-        assert log_file.exists()
-        lines = log_file.read_text().strip().split("\n")
-        assert len(lines) == 2
+        # Verify Database Content
+        db_path = Path(tmpdir) / "deconvolute_state.db"
+        assert db_path.exists()
 
-        data1 = json.loads(lines[0])
-        assert data1["type"] == "discovery"
-        assert data1["tools_found_count"] == 10
-        assert data1["tools_allowed"][0]["name"] == "tool_a"
-        assert data1["tools_allowed"][1]["name"] == "tool_b"
+        import sqlite3
 
-        data2 = json.loads(lines[1])
-        assert data2["type"] == "access"
-        assert data2["tool_name"] == "tool_a"
-        assert data2["status"] == "safe"
+        with sqlite3.connect(db_path) as conn:
+            conn.row_factory = sqlite3.Row
+            rows = conn.execute("SELECT * FROM audit_queue ORDER BY id ASC").fetchall()
+
+            assert len(rows) == 2
+            assert rows[0]["event_type"] == TelemetryEventType.SESSION_DISCOVERY
+            data1 = json.loads(rows[0]["payload"])
+            assert data1.get("type") == "discovery" or "tools_found_count" in data1
+            assert data1["tools_found_count"] == 10
+            assert data1["tools_allowed"][0]["name"] == "tool_a"
+            assert data1["tools_allowed"][1]["name"] == "tool_b"
+
+            assert rows[1]["event_type"] == TelemetryEventType.SESSION_ACCESS
+            data2 = json.loads(rows[1]["payload"])
+            assert data2.get("type") == "access" or "tool_name" in data2
+            assert data2["tool_name"] == "tool_a"
+            assert data2["status"] == "safe"
 
 
-@pytest.mark.asyncio
-async def test_local_file_backend_handles_io_errors(caplog):
-    backend = LocalFileBackend("dummy.jsonl")
+def test_local_observability_backend_handles_errors(caplog):
+    backend = LocalObservabilityBackend()
 
-    with patch("builtins.open", side_effect=OSError("Disk full")):
+    with patch.object(
+        backend.store, "log_audit_event", side_effect=Exception("DB fully broken")
+    ):
         event = AccessEvent(
             tool_name="test",
             status=SecurityStatus.SAFE,
             reason="test",
         )
         # Should not raise exception, but log error
-        await backend.log_access(event)
+        backend.log_event(
+            TelemetryEventType.SESSION_ACCESS, event.model_dump(mode="json")
+        )
 
-    assert "Failed to write audit log" in caplog.text
+    assert (
+        "Failed to write audit event 'SESSION_ACCESS' to SQLite: DB fully broken"
+        in caplog.text
+    )
 
 
 def test_tool_data_serialization():

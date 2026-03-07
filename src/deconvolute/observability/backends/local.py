@@ -1,72 +1,49 @@
-import asyncio
-import json
-from pathlib import Path
 from typing import Any
 
-from deconvolute.models.observability import AccessEvent, DiscoveryEvent
-from deconvolute.observability.base import ObservabilityBackend
+from deconvolute.core.persistence import SQLiteStore
+from deconvolute.observability.base import BaseObservabilityBackend
 from deconvolute.utils.logger import get_logger
 
 logger = get_logger()
 
 
-class LocalFileBackend(ObservabilityBackend):
+class LocalObservabilityBackend(BaseObservabilityBackend):
     """
-    Observability backend that writes events to a local JSONL file.
+    A unified local observability backend powered by SQLite.
 
-    This backend is intended for local development, debugging, and
-    offline auditing. It writes one valid JSON object per line.
+    All security telemetry, tool discoveries, and agent execution logs are
+    written to the `audit_queue` table. If an API key is present, the background
+    worker will securely transmit these events to the remote platform.
+    If not, they are retained locally with a cap to prevent disk bloat.
     """
 
-    def __init__(self, file_path: str) -> None:
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
         """
-        Initialize the local file backend.
+        Initializes the SQLite-backed local observability layer.
+        """
+        super().__init__(*args, **kwargs)
+        self.store = SQLiteStore()
+        logger.debug("Initialized LocalObservabilityBackend with SQLite storage.")
+
+    def log_event(self, event_type: str, payload: dict[str, Any]) -> None:
+        """
+        Records a telemetry event to the database.
 
         Args:
-            file_path: The path to the log file (e.g. "audit.jsonl").
-                If the parent directories do not exist, they will be created.
+            event_type (str): Categorizes the event (e.g. 'SESSION_DISCOVERY',
+                'SESSION_ACCESS').
+            payload (dict[str, Any]): The full contextual payload to record.
         """
-        self.file_path = Path(file_path)
         try:
-            self.file_path.parent.mkdir(parents=True, exist_ok=True)
-        except OSError as e:
-            logger.error(f"Failed to create audit log directory: {e}")
-
-    async def _write(self, data: dict[str, Any]) -> None:
-        """
-        Asynchronously appends a line to the file using a thread executor.
-        This prevents blocking the main event loop during file I/O.
-
-        Args:
-            data: The dictionary to serialize and write.
-        """
-        line = json.dumps(data, default=str) + "\n"
-
-        try:
-            # Offload the blocking open/write to a thread
-            await asyncio.to_thread(self._append_to_file, line)
+            self.store.log_audit_event(event_type=event_type, payload=payload)
         except Exception as e:
-            logger.error(f"Failed to write audit log: {e}")
+            # We never want a failure in telemetry to crash the user's main application
+            logger.error(f"Failed to write audit event '{event_type}' to SQLite: {e}")
 
-    def _append_to_file(self, text: str) -> None:
-        """Blocking write operation to be run in a thread."""
-        with open(self.file_path, "a", encoding="utf-8") as f:
-            f.write(text)
-
-    async def log_discovery(self, event: DiscoveryEvent) -> None:
+    def close(self) -> None:
         """
-        Log a tool discovery event to the JSONL file.
-
-        Args:
-            event: The DiscoveryEvent to log.
+        Cleans up resources.
+        SQLite connections are handled via context managers in the store,
+        so no explicit teardown is strictly required here.
         """
-        await self._write(event.model_dump())
-
-    async def log_access(self, event: AccessEvent) -> None:
-        """
-        Log a tool execution event to the JSONL file.
-
-        Args:
-            event: The AccessEvent to log.
-        """
-        await self._write(event.model_dump())
+        pass

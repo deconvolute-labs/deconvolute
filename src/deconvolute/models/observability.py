@@ -1,10 +1,33 @@
 import uuid
 from datetime import UTC, datetime
+from enum import StrEnum
 from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
 from deconvolute.models.security import SecurityStatus
+
+
+class TelemetryEventType(StrEnum):
+    """
+    High-level session traffic events emitted by the MCP Proxy.
+    These track the aggregate actions performed by the AI agent.
+    """
+
+    SESSION_DISCOVERY = "SESSION_DISCOVERY"
+    SESSION_ACCESS = "SESSION_ACCESS"
+
+
+class SecurityEventType(StrEnum):
+    """
+    Low-level forensic events emitted by the security engine.
+    These track granular firewall triggers and database lifecycle events.
+    """
+
+    TOOL_PINNED = "TOOL_PINNED"
+    INTEGRITY_VIOLATION = "INTEGRITY_VIOLATION"
+    UNREGISTERED_ACCESS = "UNREGISTERED_ACCESS"
+    RUNTIME_VIOLATION = "RUNTIME_VIOLATION"
 
 
 class ToolData(BaseModel):

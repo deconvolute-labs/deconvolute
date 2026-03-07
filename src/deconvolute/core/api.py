@@ -5,8 +5,7 @@ from typing import TYPE_CHECKING, Any, Literal, TypeVar
 
 if TYPE_CHECKING:
     import mcp.types
-
-from deconvolute.constants import DEFAULT_MCP_POLICY_FILENAME
+from deconvolute.constants import DECONVOLUTE_API_KEY, DEFAULT_MCP_POLICY_FILENAME
 from deconvolute.core.defaults import get_guard_defaults, get_scan_defaults
 from deconvolute.core.firewall import MCPFirewall
 from deconvolute.core.policy import PolicyLoader
@@ -31,7 +30,6 @@ def mcp_guard(
     client: T,
     policy_path: str = DEFAULT_MCP_POLICY_FILENAME,
     integrity: Literal["snapshot", "strict"] = "snapshot",
-    audit_log: str | None = None,
     transport_origin: TransportOrigin | None = None,
     init_result: "mcp.types.InitializeResult | None" = None,
 ) -> T:
@@ -56,9 +54,6 @@ def mcp_guard(
               at runtime.
             - "strict": Forces a re-verification of the tool definition before every
               execution. Prevents "Rug Pull" attacks but adds a network round-trip.
-        audit_log: Optional path to write a JSONL file to record all security events.
-            If provided, telemetry (Discovery and Access events) will be written
-            to this file asynchronously.
         init_result: Optional mcp.types.InitializeResult. Pass this if the session
             was already initialized prior to wrapping, to ensure the firewall
             can evaluate the server's version and identity.
@@ -90,7 +85,7 @@ def mcp_guard(
         >>>         print(f"Success: {result.content[0].text}")
     """
     # Configure Observability (Singleton)
-    configure_observability(audit_log)
+    configure_observability()
 
     # Load & Validate Policy (Fails fast if missing)
     # We load this BEFORE importing the proxy to ensure configuration is valid.
@@ -323,7 +318,7 @@ def _resolve_configuration(
     Returns:
         The configured scanners with keys injected.
     """
-    final_key = api_key or os.getenv("DECONVOLUTE_API_KEY")
+    final_key = api_key or os.getenv(DECONVOLUTE_API_KEY)
 
     # We only inject if the key is available and the scanner is unconfigured.
     if final_key:
@@ -339,7 +334,6 @@ async def secure_stdio_session(
     server_parameters: Any,
     policy_path: str = DEFAULT_MCP_POLICY_FILENAME,
     integrity: Literal["snapshot", "strict"] = "snapshot",
-    audit_log: str | None = None,
 ) -> AsyncIterator[Any]:
     """
     Secure context manager for MCP stdio connections.
@@ -358,7 +352,6 @@ async def secure_stdio_session(
                 startup.
             - "strict": Forces a re-verification of the tool definition before every
                 execution.
-        audit_log: Optional path to write a JSONL file to record all security events.
 
     Yields:
         MCPProxy: A secure proxy wrapping the active `mcp.ClientSession`.
@@ -371,7 +364,7 @@ async def secure_stdio_session(
     from deconvolute.clients.mcp import secure_stdio_session_impl
 
     async with secure_stdio_session_impl(
-        server_parameters, policy_path, integrity, audit_log
+        server_parameters, policy_path, integrity
     ) as session:
         yield session
 
@@ -381,7 +374,6 @@ async def secure_sse_session(
     url: str,
     policy_path: str = DEFAULT_MCP_POLICY_FILENAME,
     integrity: Literal["snapshot", "strict"] = "snapshot",
-    audit_log: str | None = None,
 ) -> AsyncIterator[Any]:
     """
     Secure context manager for MCP Server-Sent Events (SSE) connections.
@@ -399,7 +391,6 @@ async def secure_sse_session(
                 startup.
             - "strict": Forces a re-verification of the tool definition before every
                 execution.
-        audit_log: Optional path to write a JSONL file to record all security events.
 
     Yields:
         MCPProxy: A secure proxy wrapping the active `mcp.ClientSession`.
@@ -411,7 +402,5 @@ async def secure_sse_session(
     """
     from deconvolute.clients.mcp import secure_sse_session_impl
 
-    async with secure_sse_session_impl(
-        url, policy_path, integrity, audit_log
-    ) as session:
+    async with secure_sse_session_impl(url, policy_path, integrity) as session:
         yield session

@@ -3,6 +3,10 @@ META_LATENCY = "latency_ms"
 META_CONFIDENCE = "confidence_score"
 META_MODEL = "model_version"
 
+# Application
+DECONVOLUTE_API_KEY = "DECONVOLUTE_API_KEY"
+DECONVOLUTE_CACHE_DIR = "DECONVOLUTE_CACHE_DIR"
+
 # Default timeouts (if needed later)
 DEFAULT_TIMEOUT_SEC = 5.0
 

@@ -1,6 +1,6 @@
 from pathlib import Path
 from typing import Any
-from unittest.mock import AsyncMock
+from unittest.mock import MagicMock
 
 import mcp.types as types
 import pytest
@@ -147,7 +147,7 @@ async def test_observability_hook_dispatch(
     backend.
     """
 
-    mock_backend = AsyncMock()
+    mock_backend = MagicMock()
     mocker.patch("deconvolute.clients.mcp.get_backend", return_value=mock_backend)
 
     async with create_connected_server_and_client_session(mcp_server) as session:
@@ -158,9 +158,12 @@ async def test_observability_hook_dispatch(
         # Trigger Discovery
         await proxy.list_tools()
 
-        # Verify log_discovery was awaited
-        mock_backend.log_discovery.assert_awaited_once()
-        discovery_event = mock_backend.log_discovery.call_args[0][0]
+        # Verify log_event was called
+        mock_backend.log_event.assert_called_once()
+        event_dict = mock_backend.log_event.call_args[0][1]
+        from deconvolute.models.observability import DiscoveryEvent
+
+        discovery_event = DiscoveryEvent.model_validate(event_dict)
         assert discovery_event.tools_found_count == 3
         assert discovery_event.tools_allowed_count == 2
 
@@ -177,9 +180,12 @@ async def test_observability_hook_dispatch(
         # Trigger a blocked execution
         await proxy.call_tool("blocked_tool", arguments={})
 
-        # Verify log_access was awaited
-        mock_backend.log_access.assert_awaited_once()
-        access_event = mock_backend.log_access.call_args[0][0]
+        # Verify log_event was called again
+        assert mock_backend.log_event.call_count == 2
+        event_dict = mock_backend.log_event.call_args[0][1]
+        from deconvolute.models.observability import AccessEvent
+
+        access_event = AccessEvent.model_validate(event_dict)
         assert access_event.tool_name == "blocked_tool"
         assert access_event.status == SecurityStatus.UNSAFE
         assert access_event.reason == "Policy violation"

@@ -189,3 +189,101 @@ class TestLiveMCP:
                     )
         finally:
             os.remove(policy_path)
+
+    async def test_wrap_first_initialize_second(self):
+        """
+        Flow 1: Wrap First, Initialize Second (Preferred)
+        """
+        server_script = os.path.join(os.path.dirname(__file__), "mcp_server.py")
+        server_params = StdioServerParameters(
+            command=sys.executable, args=[server_script], env=None
+        )
+
+        policy = {
+            "version": "2.0",
+            "servers": {
+                "live-test-server": {
+                    "version": ">=0.1.0",
+                    "tools": [{"name": "echo", "action": "allow"}],
+                }
+            },
+        }
+
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
+            yaml.dump(policy, f)
+            policy_path = f.name
+
+        try:
+            async with stdio_client(server_params) as (read, write):
+                async with ClientSession(read, write) as session:
+                    # 1. Wrap the raw session
+                    safe_session = mcp_guard(session, policy_path=policy_path)
+
+                    # 2. Initialize the guarded session
+                    await safe_session.initialize()
+
+                    # Verify it works by talking through the guard wrapper
+                    params = await safe_session.list_tools()
+                    tool_names = [t.name for t in params.tools]
+                    assert "echo" in tool_names
+
+                    # Verify call_tool works
+                    result = await safe_session.call_tool(
+                        "echo", arguments={"message": "Flow 1"}
+                    )
+                    assert not result.isError
+                    content = result.content[0]
+                    assert isinstance(content, types.TextContent)
+                    assert content.text == "Echo: Flow 1"
+        finally:
+            os.remove(policy_path)
+
+    async def test_initialize_first_wrap_second(self):
+        """
+        Flow 2: Initialize First, Wrap Second
+        """
+        server_script = os.path.join(os.path.dirname(__file__), "mcp_server.py")
+        server_params = StdioServerParameters(
+            command=sys.executable, args=[server_script], env=None
+        )
+
+        policy = {
+            "version": "2.0",
+            "servers": {
+                "live-test-server": {
+                    "version": ">=0.1.0",
+                    "tools": [{"name": "echo", "action": "allow"}],
+                }
+            },
+        }
+
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
+            yaml.dump(policy, f)
+            policy_path = f.name
+
+        try:
+            async with stdio_client(server_params) as (read, write):
+                async with ClientSession(read, write) as session:
+                    # 1. Initialize the raw session first
+                    init_result = await session.initialize()
+
+                    # 2. Wrap the session and inject the initialization result
+                    safe_session = mcp_guard(
+                        session, policy_path=policy_path, init_result=init_result
+                    )
+
+                    # Verify it works by talking through the guard wrapper
+                    params = await safe_session.list_tools()
+                    tool_names = [t.name for t in params.tools]
+                    assert "echo" in tool_names
+
+                    # Verify call_tool works
+                    result = await safe_session.call_tool(
+                        "echo", arguments={"message": "Flow 2"}
+                    )
+                    assert not result.isError
+                    content = result.content[0]
+                    assert isinstance(content, types.TextContent)
+                    assert content.text == "Echo: Flow 2"
+        finally:
+            os.remove(policy_path)
