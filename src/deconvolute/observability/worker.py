@@ -21,7 +21,8 @@ class TelemetrySyncWorker:
     """
 
     def __init__(self, store: SQLiteStore) -> None:
-        """Initializes the sync worker.
+        """
+        Initializes the sync worker.
 
         Args:
             store (SQLiteStore): The local database instance containing the
@@ -93,7 +94,6 @@ class TelemetrySyncWorker:
             processed_ids = []
             for row_id, event_type, payload_str in rows:
                 _ = json.loads(payload_str)
-
                 # Placeholder for transmission to platform
                 # Simulate a successful sync
                 logger.debug("Processed event %s: %s", row_id, event_type)

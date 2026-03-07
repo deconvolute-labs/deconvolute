@@ -24,7 +24,9 @@ def configure_observability() -> None:
 
 
 def get_backend() -> BaseObservabilityBackend:
-    """Retrieves the active observability backend, initializing it if necessary."""
+    """
+    Retrieves the active observability backend, initializing it if necessary.
+    """
     global _active_backend
     if _active_backend is None:
         configure_observability()

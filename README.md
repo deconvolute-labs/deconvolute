@@ -133,7 +133,7 @@ CEL is the same highly performant, memory-safe language used by Kubernetes and E
 
 ### Event Logging
 
-Deconvolute automatically records every tool discovery and execution event, giving you a durable audit record for debugging and forensic analysis.
+Deconvolute automatically records every tool discovery and execution event locally, giving you a durable audit record for debugging and forensic analysis.
 
 ```python
 # Event logging is automatic

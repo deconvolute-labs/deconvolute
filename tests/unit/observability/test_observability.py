@@ -8,7 +8,12 @@ import pytest
 from pydantic import ValidationError
 
 import deconvolute.observability
-from deconvolute.models.observability import AccessEvent, DiscoveryEvent, ToolData
+from deconvolute.models.observability import (
+    AccessEvent,
+    AuditEventType,
+    DiscoveryEvent,
+    ToolData,
+)
 from deconvolute.models.security import SecurityStatus
 from deconvolute.observability import configure_observability, get_backend
 from deconvolute.observability.backends.local import LocalObservabilityBackend
@@ -47,7 +52,9 @@ def test_local_observability_backend_writes(monkeypatch):
             tools_blocked=[ToolData(name="tool_c")],
             server_info={"version": "1.0"},
         )
-        backend.log_event("TOOL_DISCOVERY", discovery_event.model_dump(mode="json"))
+        backend.log_event(
+            AuditEventType.TOOL_DISCOVERY, discovery_event.model_dump(mode="json")
+        )
 
         # Test Access Event
         access_event = AccessEvent(
@@ -56,7 +63,9 @@ def test_local_observability_backend_writes(monkeypatch):
             reason="policy_allow",
             metadata={"latency": 0.1},
         )
-        backend.log_event("TOOL_EXECUTION", access_event.model_dump(mode="json"))
+        backend.log_event(
+            AuditEventType.TOOL_EXECUTION, access_event.model_dump(mode="json")
+        )
 
         # Verify Database Content
         db_path = Path(tmpdir) / "deconvolute_state.db"
@@ -69,14 +78,14 @@ def test_local_observability_backend_writes(monkeypatch):
             rows = conn.execute("SELECT * FROM audit_queue ORDER BY id ASC").fetchall()
 
             assert len(rows) == 2
-            assert rows[0]["event_type"] == "TOOL_DISCOVERY"
+            assert rows[0]["event_type"] == AuditEventType.TOOL_DISCOVERY
             data1 = json.loads(rows[0]["payload"])
             assert data1.get("type") == "discovery" or "tools_found_count" in data1
             assert data1["tools_found_count"] == 10
             assert data1["tools_allowed"][0]["name"] == "tool_a"
             assert data1["tools_allowed"][1]["name"] == "tool_b"
 
-            assert rows[1]["event_type"] == "TOOL_EXECUTION"
+            assert rows[1]["event_type"] == AuditEventType.TOOL_EXECUTION
             data2 = json.loads(rows[1]["payload"])
             assert data2.get("type") == "access" or "tool_name" in data2
             assert data2["tool_name"] == "tool_a"
@@ -95,7 +104,7 @@ def test_local_observability_backend_handles_errors(caplog):
             reason="test",
         )
         # Should not raise exception, but log error
-        backend.log_event("TOOL_EXECUTION", event.model_dump(mode="json"))
+        backend.log_event(AuditEventType.TOOL_EXECUTION, event.model_dump(mode="json"))
 
     assert (
         "Failed to write audit event 'TOOL_EXECUTION' to SQLite: DB fully broken"

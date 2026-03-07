@@ -262,7 +262,9 @@ class MCPProxy:
                 tools_blocked=blocked_event_data,
                 server_info=server_details,
             )
-            backend.log_event("TOOL_DISCOVERY", event.model_dump(mode="json"))
+            backend.log_event(
+                AuditEventType.TOOL_DISCOVERY, event.model_dump(mode="json")
+            )
 
         # Reconstruct the result
         # We filter the original Pydantic objects to preserve data fidelity

@@ -11,22 +11,23 @@ class LocalObservabilityBackend(BaseObservabilityBackend):
     """
     A unified local observability backend powered by SQLite.
 
-    Replaces legacy JSONL file logging. All security telemetry, tool discoveries,
-    and agent execution logs are immediately written to the robust `audit_queue`
-    table. If an API key is present, the background worker will securely transmit
-    these events to the remote platform. If not, they are retained locally
-    with a strict cap to prevent disk bloat.
+    All security telemetry, tool discoveries, and agent execution logs are
+    written to the `audit_queue` table. If an API key is present, the background
+    worker will securely transmit these events to the remote platform.
+    If not, they are retained locally with a cap to prevent disk bloat.
     """
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
-        """Initializes the SQLite-backed local observability layer."""
+        """
+        Initializes the SQLite-backed local observability layer.
+        """
         super().__init__(*args, **kwargs)
         self.store = SQLiteStore()
         logger.debug("Initialized LocalObservabilityBackend with SQLite storage.")
 
     def log_event(self, event_type: str, payload: dict[str, Any]) -> None:
         """
-        Records a telemetry event to the persistent database.
+        Records a telemetry event to the database.
 
         Args:
             event_type (str): Categorizes the event (e.g. 'TOOL_EXECUTION',
