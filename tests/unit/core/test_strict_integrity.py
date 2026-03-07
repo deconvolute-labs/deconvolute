@@ -34,6 +34,8 @@ def mock_session():
     # Mock list_tools response structure
     tool_a = MagicMock()
     tool_a.name = "tool_a"
+    tool_a.description = "A test tool"
+    tool_a.inputSchema = {"type": "object"}
     tool_a.model_dump.return_value = {
         "name": "tool_a",
         "description": "A test tool",
@@ -66,6 +68,13 @@ def mock_firewall():
     firewall.check_tool_call.return_value = SecurityResult(
         component=SecurityComponent.FIREWALL, status=SecurityStatus.SAFE, metadata={}
     )
+    firewall.registry = MagicMock()
+    firewall.registry.compute_hash.return_value = "mock_hash"
+
+    # Mock get() for ToolData construction during Observability Hook
+    mock_snapshot = MagicMock()
+    mock_snapshot.definition_hash = "mock_hash"
+    firewall.registry.get.return_value = mock_snapshot
     firewall.policy = MagicMock()
     return firewall
 
@@ -154,8 +163,12 @@ async def test_strict_mode_pagination_success(mock_session, mock_firewall):
 
     tool_a = MagicMock()
     tool_a.name = "tool_a"
+    tool_a.description = "Desc a"
+    tool_a.inputSchema = {}
     tool_b = MagicMock()
     tool_b.name = "tool_b"
+    tool_b.description = "Desc b"
+    tool_b.inputSchema = {}
 
     # Page 1 returns tool_a and next_cursor. Page 2 returns tool_b and no cursor
     async def mock_list_tools(cursor=None, params=None, *args, **kwargs):
@@ -194,6 +207,8 @@ async def test_strict_mode_pagination_infinite_loop_protection(
 
     tool_a = MagicMock()
     tool_a.name = "tool_a"
+    tool_a.description = "Desc a"
+    tool_a.inputSchema = {}
 
     # Server broken: always returns the same cursor
     async def mock_list_tools(*args, **kwargs):

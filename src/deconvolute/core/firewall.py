@@ -38,7 +38,7 @@ class MCPFirewall:
             policy: The loaded and validated SecurityPolicy object.
         """
         self.policy = policy
-        self.registry = MCPSessionRegistry()
+        self.registry = MCPSessionRegistry(server_name="")
         self.server_name: str | None = None
         self._compiled_rules: list[CompiledRule] = []
 
@@ -50,6 +50,8 @@ class MCPFirewall:
         and optionally validating the transport origin to prevent spoofing.
         """
         self.server_name = server_name
+        # Inject the discovered server name into the persistent registry
+        self.registry.set_server_name(server_name)
         self._compiled_rules = self._compile_rules(server_name)
 
         if transport_origin:

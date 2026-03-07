@@ -1,32 +1,34 @@
-from deconvolute.observability.backends.local import LocalFileBackend
-from deconvolute.observability.base import ObservabilityBackend
+from deconvolute.observability.backends.local import LocalObservabilityBackend
+from deconvolute.observability.base import BaseObservabilityBackend
+from deconvolute.utils.logger import get_logger
 
-# Singleton instance of the active backend
-_backend: ObservabilityBackend | None = None
+logger = get_logger()
+
+# Global singleton for the active observability backend
+_active_backend: BaseObservabilityBackend | None = None
 
 
-def configure_observability(log_path: str | None) -> None:
+def configure_observability() -> None:
     """
-    Configures the global observability backend.
+    Initializes the global observability backend.
 
-    Currently supports a local file backend if `log_path` is provided.
-    If `log_path` is None, observability is disabled (no-op).
-
-    Args:
-        log_path: The file path for the JSONL audit log, or None to disable.
+    This sets up the local SQLite outbox for telemetry and starts the
+    background synchronization worker if platform credentials are provided.
     """
-    global _backend
-    if log_path:
-        _backend = LocalFileBackend(log_path)
-    else:
-        _backend = None
+    global _active_backend
+    if _active_backend is None:
+        _active_backend = LocalObservabilityBackend()
+        logger.debug(
+            "Observability configured with SQLite-backed LocalObservabilityBackend."
+        )
 
 
-def get_backend() -> ObservabilityBackend | None:
-    """
-    Retrieves the currently configured observability backend.
+def get_backend() -> BaseObservabilityBackend:
+    """Retrieves the active observability backend, initializing it if necessary."""
+    global _active_backend
+    if _active_backend is None:
+        configure_observability()
 
-    Returns:
-        The active ObservabilityBackend instance, or None if disabled.
-    """
-    return _backend
+    # We can safely ignore the type checker here because configure_observability
+    # guarantees _active_backend is no longer None.
+    return _active_backend  # type: ignore

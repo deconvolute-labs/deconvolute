@@ -1,10 +1,22 @@
 import uuid
 from datetime import UTC, datetime
+from enum import StrEnum
 from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
 from deconvolute.models.security import SecurityStatus
+
+
+class AuditEventType(StrEnum):
+    """
+    Categorizes security and telemetry events for the audit outbox.
+    """
+
+    TOOL_DISCOVERED = "TOOL_DISCOVERED"
+    TOOL_INTEGRITY_VIOLATION = "TOOL_INTEGRITY_VIOLATION"
+    UNREGISTERED_TOOL_EXECUTION = "UNREGISTERED_TOOL_EXECUTION"
+    RUNTIME_INTEGRITY_VIOLATION = "RUNTIME_INTEGRITY_VIOLATION"
 
 
 class ToolData(BaseModel):

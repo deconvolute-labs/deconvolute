@@ -262,7 +262,7 @@ class MCPProxy:
                 tools_blocked=blocked_event_data,
                 server_info=server_details,
             )
-            await backend.log_discovery(event)
+            backend.log_event("TOOL_DISCOVERY", event.model_dump(mode="json"))
 
         # Reconstruct the result
         # We filter the original Pydantic objects to preserve data fidelity
@@ -357,7 +357,9 @@ class MCPProxy:
                             reason="integrity_violation",
                             metadata=sec_result.metadata,
                         )
-                        await backend.log_access(event)
+                        backend.log_event(
+                            "TOOL_EXECUTION", event.model_dump(mode="json")
+                        )
 
                     logger.warning(
                         f"MCPProxy (Strict): Tool '{name}' vanished from server "
@@ -403,7 +405,9 @@ class MCPProxy:
                                 "component": "integrity_check",
                             },
                         )
-                        await backend.log_access(event)
+                        backend.log_event(
+                            "TOOL_EXECUTION", event.model_dump(mode="json")
+                        )
 
         # Security Check
         sec_result = self._firewall.check_tool_call(
@@ -447,7 +451,7 @@ class MCPProxy:
                 reason=reason,
                 metadata=sec_result.metadata,
             )
-            await backend.log_access(event)
+            backend.log_event("TOOL_EXECUTION", event.model_dump(mode="json"))
 
         if sec_result.status == SecurityStatus.UNSAFE:
             reason = sec_result.metadata.get("reason", "Blocked by policy")
@@ -480,7 +484,6 @@ async def secure_stdio_session_impl(
     server_parameters: Any,
     policy_path: str,
     integrity: IntegrityLevel = "snapshot",
-    audit_log: str | None = None,
 ) -> AsyncIterator[Any]:
     """
     Implementation for the secure stdio transport wrapper.
@@ -501,7 +504,6 @@ async def secure_stdio_session_impl(
                 session,
                 policy_path=policy_path,
                 integrity=integrity,
-                audit_log=audit_log,
                 transport_origin=origin,
             )
             yield guarded_session
@@ -512,7 +514,6 @@ async def secure_sse_session_impl(
     url: str,
     policy_path: str,
     integrity: IntegrityLevel = "snapshot",
-    audit_log: str | None = None,
 ) -> AsyncIterator[Any]:
     """
     Implementation for the secure sse transport wrapper.
@@ -529,7 +530,6 @@ async def secure_sse_session_impl(
                 session,
                 policy_path=policy_path,
                 integrity=integrity,
-                audit_log=audit_log,
                 transport_origin=origin,
             )
             yield guarded_session

@@ -72,12 +72,12 @@ async def test_list_tools_filtering_success(proxy, mock_session, mock_firewall):
     tool_a = MagicMock(name="Tool_a")
     tool_a.name = "allowed_tool"
     tool_a.description = "Allowed Tool Description"
-    tool_a.input_schema = {"type": "object"}
+    tool_a.inputSchema = {"type": "object"}
 
     tool_b = MagicMock(name="Tool_b")
     tool_b.name = "blocked_tool"
     tool_b.description = "Blocked Tool Description"
-    tool_b.input_schema = {"type": "object"}
+    tool_b.inputSchema = {"type": "object"}
 
     # Mock session response
     initial_result = MagicMock()
@@ -95,6 +95,9 @@ async def test_list_tools_filtering_success(proxy, mock_session, mock_firewall):
 
     # Mock firewall response (only returns allowed tools)
     mock_firewall.check_tool_list.return_value = [{"name": "allowed_tool"}]
+    mock_snapshot = MagicMock()
+    mock_snapshot.definition_hash = "mock_hash"
+    mock_firewall.registry.get.return_value = mock_snapshot
 
     # Execute
     result = await proxy.list_tools()
@@ -344,7 +347,7 @@ async def test_list_tools_discovery_event_server_details(
     mock_get_backend, proxy, mock_session, mock_firewall
 ):
     mock_backend = MagicMock()
-    mock_backend.log_discovery = AsyncMock()
+    mock_backend.log_event = MagicMock()
     mock_get_backend.return_value = mock_backend
 
     # Mock server_info (snake_case) with details
@@ -383,9 +386,12 @@ async def test_list_tools_discovery_event_server_details(
     # Execute
     await proxy.list_tools()
 
-    # Verify log_discovery was called
-    mock_backend.log_discovery.assert_called_once()
-    logged_event = mock_backend.log_discovery.call_args[0][0]
+    # Verify log_event was called
+    mock_backend.log_event.assert_called_once()
+    event_dict = mock_backend.log_event.call_args[0][1]
+    from deconvolute.models.observability import DiscoveryEvent
+
+    logged_event = DiscoveryEvent.model_validate(event_dict)
 
     assert logged_event.server_info["name"] == "test_server_name"
     assert logged_event.server_info["version"] == "1.0.0"
@@ -399,7 +405,7 @@ async def test_list_tools_discovery_event_server_details_missing_fields(
     mock_get_backend, proxy, mock_session, mock_firewall
 ):
     mock_backend = MagicMock()
-    mock_backend.log_discovery = AsyncMock()
+    mock_backend.log_event = MagicMock()
     mock_get_backend.return_value = mock_backend
 
     # Mock server_info with minimal details
@@ -418,9 +424,12 @@ async def test_list_tools_discovery_event_server_details_missing_fields(
     # Execute
     await proxy.list_tools()
 
-    # Verify log_discovery was called
-    mock_backend.log_discovery.assert_called_once()
-    logged_event = mock_backend.log_discovery.call_args[0][0]
+    # Verify log_event was called
+    mock_backend.log_event.assert_called_once()
+    event_dict = mock_backend.log_event.call_args[0][1]
+    from deconvolute.models.observability import DiscoveryEvent
+
+    logged_event = DiscoveryEvent.model_validate(event_dict)
 
     assert logged_event.server_info["name"] == "unknown"
     assert logged_event.server_info["version"] == "unknown"
