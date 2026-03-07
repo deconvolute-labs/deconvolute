@@ -56,14 +56,14 @@ def test_init_db_creates_tables(store):
 
 def test_pin_tool_inserts_new_record(store):
     """Ensures that a new tool is properly pinned."""
-    store.pin_tool("server_one", "my_tool", "hash123")
+    store.pin_tool("server_one", "1.0.0", "my_tool", "hash123")
 
     with sqlite3.connect(store.db_path) as conn:
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
         cursor.execute(
             "SELECT * FROM pinned_tools WHERE server_name='server_one' AND "
-            "tool_name='my_tool'"
+            "server_version='1.0.0' AND tool_name='my_tool'"
         )
         row = cursor.fetchone()
 
@@ -79,15 +79,15 @@ def test_pin_tool_updates_existing_record(store):
     """
     Ensures that an existing pinned tool updates correctly without constraint error.
     """
-    store.pin_tool("server_one", "my_tool", "hash123")
-    store.pin_tool("server_one", "my_tool", "hash456", from_remote=True)
+    store.pin_tool("server_one", "1.0.0", "my_tool", "hash123")
+    store.pin_tool("server_one", "1.0.0", "my_tool", "hash456", from_remote=True)
 
     with sqlite3.connect(store.db_path) as conn:
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
         cursor.execute(
             "SELECT * FROM pinned_tools WHERE server_name='server_one' AND "
-            "tool_name='my_tool'"
+            "server_version='1.0.0' AND tool_name='my_tool'"
         )
         row = cursor.fetchone()
 
@@ -102,12 +102,13 @@ def test_pin_tool_updates_existing_record(store):
 
 def test_get_pinned_hash(store):
     """Ensures retrieving hash works correctly for both existing and missing records."""
-    assert store.get_pinned_hash("srv", "tool") is None
+    assert store.get_pinned_hash("srv", "1.0.0", "tool") is None
 
-    store.pin_tool("srv", "tool", "abcd")
-    assert store.get_pinned_hash("srv", "tool") == "abcd"
-    assert store.get_pinned_hash("srv", "other") is None
-    assert store.get_pinned_hash("other_srv", "tool") is None
+    store.pin_tool("srv", "1.0.0", "tool", "abcd")
+    assert store.get_pinned_hash("srv", "1.0.0", "tool") == "abcd"
+    assert store.get_pinned_hash("srv", "1.0.0", "other") is None
+    assert store.get_pinned_hash("other_srv", "1.0.0", "tool") is None
+    assert store.get_pinned_hash("srv", "2.0.0", "tool") is None
 
 
 def test_log_audit_event(store):

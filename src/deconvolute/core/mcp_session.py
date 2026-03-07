@@ -35,6 +35,9 @@ class ToolSnapshot(BaseModel):
     definition_hash: str = Field(
         ..., description="SHA-256 hash of the canonicalized tool definition."
     )
+    server_version: str = Field(
+        ..., description="The reported version of the server that registered this tool."
+    )
     registered_at: datetime = Field(
         default_factory=lambda: datetime.now(UTC),
         description="UTC timestamp when this tool was registered.",
@@ -57,15 +60,18 @@ class MCPSessionRegistry:
     tool integrity during execution while backing state to a local SQLite database.
     """
 
-    def __init__(self, server_name: str | None = None) -> None:
+    def __init__(
+        self, server_name: str | None = None, server_version: str | None = None
+    ) -> None:
         """
         Initializes the MCP session registry.
 
         Args:
-            server_name (str | None): The identifier of the connected MCP server. Can
-            be injected via `set_server_name` after the handshake.
+            server_name (str | None): The identifier of the connected MCP server.
+            server_version (str | None): The reported version of the MCP server.
         """
         self.server_name = server_name
+        self.server_version = server_version
         self.store = SQLiteStore()
         # The primary storage: Maps tool_name -> ToolSnapshot
         self._tools: dict[str, ToolSnapshot] = {}
@@ -91,9 +97,10 @@ class MCPSessionRegistry:
                 "Audit events will be capped at 10000 records."
             )
 
-    def set_server_name(self, server_name: str) -> None:
-        """Sets the server name once discovered by the firewall."""
+    def set_server_name(self, server_name: str, server_version: str) -> None:
+        """Sets the server name and version once discovered by the firewall."""
         self.server_name = server_name
+        self.server_version = server_version
 
     def compute_hash(self, tool_def: ToolInterface) -> str:
         """
@@ -145,8 +152,10 @@ class MCPSessionRegistry:
         name = tool_def.get("name")
         if not name:
             raise MCPSessionError("Cannot register a tool without a name.")
-        if not self.server_name:
-            raise MCPSessionError("Cannot register a tool without a server name.")
+        if not self.server_name or not self.server_version:
+            raise MCPSessionError(
+                "Cannot register a tool without a complete server identity."
+            )
 
         # In-memory check: skip if we already loaded it this session
         # Trust On First Use
@@ -160,16 +169,19 @@ class MCPSessionRegistry:
             return self._tools[name]
 
         tool_hash = self.compute_hash(tool_def)
-        pinned_hash = self.store.get_pinned_hash(self.server_name, name)
+        pinned_hash = self.store.get_pinned_hash(
+            self.server_name, self.server_version, name
+        )
 
         if pinned_hash is None:
             # First time seeing this tool across ANY session for this server.
             logger.info(f"Discovering and pinning new tool: {name}")
-            self.store.pin_tool(self.server_name, name, tool_hash)
+            self.store.pin_tool(self.server_name, self.server_version, name, tool_hash)
             self.store.log_audit_event(
                 event_type=AuditEventType.TOOL_DISCOVERED,
                 payload={
                     "server_name": self.server_name,
+                    "server_version": self.server_version,
                     "tool_name": name,
                     "schema_hash": tool_hash,
                     "schema": tool_def,
@@ -188,6 +200,7 @@ class MCPSessionRegistry:
             description=tool_def.get("description"),
             input_schema=tool_def.get("input_schema", {}),
             definition_hash=expected_hash,
+            server_version=self.server_version,
             metadata=metadata or {},
         )
 
@@ -223,6 +236,7 @@ class MCPSessionRegistry:
                 event_type=AuditEventType.UNREGISTERED_TOOL_EXECUTION,
                 payload={
                     "server_name": self.server_name,
+                    "server_version": self.server_version,
                     "tool_name": tool_name,
                     "message": "Execution attempted for a tool that was never "
                     "registered.",
@@ -242,6 +256,7 @@ class MCPSessionRegistry:
                     event_type=AuditEventType.TOOL_INTEGRITY_VIOLATION,
                     payload={
                         "server_name": self.server_name,
+                        "server_version": self.server_version,
                         "tool_name": tool_name,
                         "expected_hash": snapshot.definition_hash,
                         "actual_hash": current_hash,

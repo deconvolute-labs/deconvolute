@@ -208,7 +208,9 @@ def test_proxy_init_sets_server_from_server_info(mock_mcp_modules, mock_firewall
     MCPProxy(mock_session, mock_firewall)
 
     # Assert firewall.set_server was called with correct name
-    mock_firewall.set_server.assert_called_once_with("test_server_snake", None)
+    mock_firewall.set_server.assert_called_once_with(
+        "test_server_snake", None, server_version="1.0.0"
+    )
 
 
 def test_proxy_init_sets_server_from_serverInfo_camel_case(
@@ -231,7 +233,9 @@ def test_proxy_init_sets_server_from_serverInfo_camel_case(
     MCPProxy(mock_session, mock_firewall)
 
     # Assert firewall.set_server was called with correct name
-    mock_firewall.set_server.assert_called_once_with("test_server_camel", None)
+    mock_firewall.set_server.assert_called_once_with(
+        "test_server_camel", None, server_version="1.0.0"
+    )
 
 
 def test_proxy_init_no_server_info(mock_mcp_modules, mock_firewall):

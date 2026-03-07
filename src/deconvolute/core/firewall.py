@@ -43,15 +43,18 @@ class MCPFirewall:
         self._compiled_rules: list[CompiledRule] = []
 
     def set_server(
-        self, server_name: str, transport_origin: TransportOrigin | None = None
+        self,
+        server_name: str,
+        transport_origin: TransportOrigin | None = None,
+        server_version: str = "unknown",
     ) -> None:
         """
         Dynamically configures the firewall by compiling rules for the given server
         and optionally validating the transport origin to prevent spoofing.
         """
         self.server_name = server_name
-        # Inject the discovered server name into the persistent registry
-        self.registry.set_server_name(server_name)
+        # Inject the discovered server identity into the persistent registry
+        self.registry.set_server_name(server_name, server_version)
         self._compiled_rules = self._compile_rules(server_name)
 
         if transport_origin:

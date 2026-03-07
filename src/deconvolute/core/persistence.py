@@ -71,11 +71,12 @@ class SQLiteStore:
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS pinned_tools (
                     server_name TEXT,
+                    server_version TEXT,
                     tool_name TEXT,
                     schema_hash TEXT,
                     discovered_at TIMESTAMP,
                     updated_from_remote BOOLEAN,
-                    PRIMARY KEY (server_name, tool_name)
+                    PRIMARY KEY (server_name, server_version, tool_name)
                 )
             """)
 
@@ -107,6 +108,7 @@ class SQLiteStore:
     def pin_tool(
         self,
         server_name: str,
+        server_version: str,
         tool_name: str,
         schema_hash: str,
         from_remote: bool = False,
@@ -114,11 +116,12 @@ class SQLiteStore:
         """
         Updates the local integrity baseline for a specific tool.
 
-        If the tool already exists for the given server, its hash and timestamp
-        are overwritten. Otherwise, a new record is created.
+        If the tool already exists for the given server and version,
+        its hash and timestamp are overwritten. Otherwise, a new record is created.
 
         Args:
             server_name (str): The identifier of the MCP server providing the tool.
+            server_version (str): The reported version of the MCP server.
             tool_name (str): The name of the tool being pinned.
             schema_hash (str): The cryptographic hash of the tool's schema.
             from_remote (bool, optional): Indicates if the hash was downloaded
@@ -131,27 +134,31 @@ class SQLiteStore:
                 """
                 INSERT INTO pinned_tools (
                     server_name, 
+                    server_version,
                     tool_name, 
                     schema_hash, 
                     discovered_at, 
                     updated_from_remote
                 )
-                VALUES (?, ?, ?, ?, ?)
-                ON CONFLICT(server_name, tool_name) DO UPDATE SET
+                VALUES (?, ?, ?, ?, ?, ?)
+                ON CONFLICT(server_name, server_version, tool_name) DO UPDATE SET
                     schema_hash=excluded.schema_hash,
                     discovered_at=excluded.discovered_at,
                     updated_from_remote=excluded.updated_from_remote
             """,
-                (server_name, tool_name, schema_hash, now, from_remote),
+                (server_name, server_version, tool_name, schema_hash, now, from_remote),
             )
             conn.commit()
 
-    def get_pinned_hash(self, server_name: str, tool_name: str) -> str | None:
+    def get_pinned_hash(
+        self, server_name: str, server_version: str, tool_name: str
+    ) -> str | None:
         """
         Retrieves the expected schema hash for a given tool.
 
         Args:
             server_name (str): The identifier of the MCP server.
+            server_version (str): The version of the MCP server.
             tool_name (str): The name of the tool.
 
         Returns:
@@ -162,8 +169,8 @@ class SQLiteStore:
             cursor = conn.cursor()
             cursor.execute(
                 "SELECT schema_hash FROM pinned_tools WHERE server_name = ? AND "
-                "tool_name = ?",
-                (server_name, tool_name),
+                "server_version = ? AND tool_name = ?",
+                (server_name, server_version, tool_name),
             )
             row = cursor.fetchone()
             return row[0] if row else None

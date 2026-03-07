@@ -117,7 +117,9 @@ class MCPProxy:
             )
 
         # Register the server identity with the firewall
-        self._firewall.set_server(server_name, self._transport_origin)
+        self._firewall.set_server(
+            server_name, self._transport_origin, server_version=server_version
+        )
 
         # Extract policy for this specific server
         server_policy = self._firewall.policy.servers.get(server_name)

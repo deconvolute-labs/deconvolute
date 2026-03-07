@@ -13,7 +13,7 @@ from deconvolute.models.observability import AuditEventType
 class TestMCPSessionRegistry:
     @pytest.fixture
     def registry(self):
-        return MCPSessionRegistry("test_server")
+        return MCPSessionRegistry("test_server", "1.0.0")
 
     def test_initialization(self, registry):
         """Test that the registry starts empty."""
@@ -201,7 +201,7 @@ class TestMCPSessionRegistry:
                     expected_hash = registry.compute_hash(tool_def)
 
                     mock_pin.assert_called_once_with(
-                        "test_server", "fresh_tool", expected_hash
+                        "test_server", "1.0.0", "fresh_tool", expected_hash
                     )
                     mock_log.assert_called_once()
 
