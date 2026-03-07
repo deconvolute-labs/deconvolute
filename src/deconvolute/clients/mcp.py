@@ -6,7 +6,7 @@ from typing import Any
 from packaging.specifiers import SpecifierSet
 
 from deconvolute.errors import ServerIdentityError
-from deconvolute.models.observability import ToolData
+from deconvolute.models.observability import AuditEventType, ToolData
 
 # We perform top-level imports here because this file is only ever
 # imported if the user explicitly calls 'mcp_guard()', which implies
@@ -358,7 +358,7 @@ class MCPProxy:
                             metadata=sec_result.metadata,
                         )
                         backend.log_event(
-                            "TOOL_EXECUTION", event.model_dump(mode="json")
+                            AuditEventType.TOOL_EXECUTION, event.model_dump(mode="json")
                         )
 
                     logger.warning(
@@ -406,7 +406,7 @@ class MCPProxy:
                             },
                         )
                         backend.log_event(
-                            "TOOL_EXECUTION", event.model_dump(mode="json")
+                            AuditEventType.TOOL_EXECUTION, event.model_dump(mode="json")
                         )
 
         # Security Check
@@ -451,7 +451,9 @@ class MCPProxy:
                 reason=reason,
                 metadata=sec_result.metadata,
             )
-            backend.log_event("TOOL_EXECUTION", event.model_dump(mode="json"))
+            backend.log_event(
+                AuditEventType.TOOL_EXECUTION, event.model_dump(mode="json")
+            )
 
         if sec_result.status == SecurityStatus.UNSAFE:
             reason = sec_result.metadata.get("reason", "Blocked by policy")
