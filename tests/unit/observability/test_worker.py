@@ -4,19 +4,12 @@ from unittest.mock import patch
 
 import pytest
 
-from deconvolute.constants import DECONVOLUTE_CACHE_DIR
 from deconvolute.core.persistence import SQLiteStore
 from deconvolute.observability.worker import TelemetrySyncWorker
 
 
 @pytest.fixture
-def temp_cache_dir(tmp_path, monkeypatch):
-    monkeypatch.setenv(DECONVOLUTE_CACHE_DIR, str(tmp_path))
-    return tmp_path
-
-
-@pytest.fixture
-def store(temp_cache_dir):
+def store():
     return SQLiteStore()
 
 

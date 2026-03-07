@@ -9,22 +9,15 @@ from deconvolute.core.persistence import APP_NAME, DATABASE_NAME, SQLiteStore
 
 
 @pytest.fixture
-def temp_cache_dir(tmp_path, monkeypatch):
-    """Overrides the DECONVOLUTE_CACHE_DIR env var to point to a temporary path."""
-    monkeypatch.setenv(DECONVOLUTE_CACHE_DIR, str(tmp_path))
-    return tmp_path
-
-
-@pytest.fixture
-def store(temp_cache_dir):
+def store():
     """Provides a fresh SQLiteStore instance backed by a temporary directory."""
     return SQLiteStore()
 
 
-def test_resolve_db_path(temp_cache_dir):
+def test_resolve_db_path(isolated_cache_dir):
     """Ensures db_path resolves correctly with the environment variable."""
     store = SQLiteStore()
-    expected_path = temp_cache_dir / DATABASE_NAME
+    expected_path = isolated_cache_dir / DATABASE_NAME
     assert store.db_path == expected_path
 
 
