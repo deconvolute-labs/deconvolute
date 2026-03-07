@@ -8,6 +8,7 @@ import pytest
 from pydantic import ValidationError
 
 import deconvolute.observability
+from deconvolute.constants import DECONVOLUTE_CACHE_DIR
 from deconvolute.models.observability import (
     AccessEvent,
     AuditEventType,
@@ -38,7 +39,7 @@ def test_configure_observability_singleton():
 
 def test_local_observability_backend_writes(monkeypatch):
     with tempfile.TemporaryDirectory() as tmpdir:
-        monkeypatch.setenv("DECONVOLUTE_CACHE_DIR", tmpdir)
+        monkeypatch.setenv(DECONVOLUTE_CACHE_DIR, tmpdir)
         backend = LocalObservabilityBackend()
 
         # Test Discovery Event
