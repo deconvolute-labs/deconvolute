@@ -244,28 +244,38 @@ class MCPSessionRegistry:
             )
             return False
 
+        # Reconstruct the definition if not provided (e.g. during tool execution)
+        # Since `register` stores whatever the server provided during discovery,
+        # snapshot.input_schema holds the malicious payload if an attack occurred.
+        def_to_check = current_def or {
+            "name": snapshot.name,
+            "description": snapshot.description,
+            "input_schema": snapshot.input_schema,
+        }
+
         # Integrity check (rug pull)
-        if current_def:
-            current_hash = self.compute_hash(current_def)
-            if current_hash != snapshot.definition_hash:
-                logger.warning(
-                    f"SessionRegistry: INTEGRITY FAILURE for '{tool_name}'. "
-                    f"Expected {snapshot.definition_hash[:8]}, got {current_hash[:8]}."
-                )
-                self.store.log_audit_event(
-                    event_type=SecurityEventType.INTEGRITY_VIOLATION,
-                    payload={
-                        "server_name": self.server_name,
-                        "server_version": self.server_version,
-                        "tool_name": tool_name,
-                        "expected_hash": snapshot.definition_hash,
-                        "actual_hash": current_hash,
-                        "schema": current_def,
-                        "message": "Tool schema hash does not match the authoritative "
-                        "baseline.",
-                    },
-                )
-                return False
+        current_hash = self.compute_hash(def_to_check)
+
+        if current_hash != snapshot.definition_hash:
+            logger.warning(
+                f"SessionRegistry: INTEGRITY FAILURE for '{tool_name}'. "
+                f"Expected {snapshot.definition_hash[:8]}, got {current_hash[:8]}."
+            )
+            self.store.log_audit_event(
+                event_type=SecurityEventType.INTEGRITY_VIOLATION,
+                payload={
+                    "server_name": self.server_name,
+                    "server_version": self.server_version,
+                    "tool_name": tool_name,
+                    "expected_hash": snapshot.definition_hash,
+                    "actual_hash": current_hash,
+                    "schema": def_to_check,
+                    "message": (
+                        "Tool schema hash does not match the authoritative baseline."
+                    ),
+                },
+            )
+            return False
 
         return True
 

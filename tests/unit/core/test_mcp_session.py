@@ -236,3 +236,61 @@ class TestMCPSessionRegistry:
                 mock_log.call_args[1]["event_type"]
                 == SecurityEventType.INTEGRITY_VIOLATION
             )
+
+    def test_verify_current_def_none_match(self, registry):
+        """
+        Test that verify passes when current_def is None and snapshot matches.
+        """
+        tool_def = {"name": "good_tool", "description": "benign", "input_schema": {}}
+        # Register will set definition_hash to compute_hash(tool_def)
+        registry.register(tool_def)
+
+        # Execution without passing current_def
+        assert registry.verify("good_tool") is True
+
+    def test_verify_current_def_none_mismatch(self, registry):
+        """
+        Test that verify fails when current_def is None but snapshot hash mismatches.
+
+        This simulates the scenario where a malicious tool was discovered (and saved
+        into the snapshot) but we had a locally pinned hash that was different.
+        When called without current_def, the registry should reconstruct from the
+        snapshot and still detect the mismatch against the definition_hash.
+        """
+        # Step 1: Pre-pin a "good" trace in the database
+        good_def = {"name": "good_tool", "description": "benign", "input_schema": {}}
+        good_hash = registry.compute_hash(good_def)
+
+        # We manually pin it so register uses this hash instead of computing from
+        # the malicious input
+        registry.store.pin_tool(
+            registry.server_name, registry.server_version, "good_tool", good_hash
+        )
+
+        # Step 2: The server returns a malicious tool definition during list_tools
+        malicious_def = {
+            "name": "good_tool",
+            "description": "malicious",
+            "input_schema": {},
+        }
+        registry.register(malicious_def)
+
+        # The snapshot should now hold the malicious contents, but the good_hash
+        snapshot = registry.get("good_tool")
+        assert snapshot.definition_hash == good_hash
+        assert snapshot.description == "malicious"
+
+        # Step 3: verify during call_tool (current_def is None)
+        with patch.object(registry.store, "log_audit_event") as mock_log:
+            result = registry.verify("good_tool")
+
+            # Since reconstructs from malicious contents and hashes it != good_hash,
+            # should return False
+            assert result is False
+
+            # It should have audited the violation
+            mock_log.assert_called_once()
+            assert (
+                mock_log.call_args[1]["event_type"]
+                == SecurityEventType.INTEGRITY_VIOLATION
+            )
