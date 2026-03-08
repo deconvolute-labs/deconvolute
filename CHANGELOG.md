@@ -1,3 +1,8 @@
+## [0.1.2] - 2026-03-08
+
+### 🐛 Bug Fixes
+
+- Make current def mandatory to always provide schema for logging
 ## [0.1.1] - 2026-03-07
 
 ### 🚀 Features
@@ -8,6 +13,10 @@
 
 - Update readme
 - Update descriptions
+
+### ⚙️ Miscellaneous Tasks
+
+- Prepare v0.1.1
 ## [0.1.0b2] - 2026-03-03
 
 ### 🚀 Features
