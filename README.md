@@ -3,6 +3,7 @@
 **Secure your MCP agents against tool shadowing, rug pulls, and credential theft with a single wrapper.**
 
 [![CI](https://github.com/deconvolute-labs/deconvolute/actions/workflows/ci.yml/badge.svg)](https://github.com/deconvolute-labs/deconvolute/actions/workflows/ci.yml)
+[![Audit](https://img.shields.io/github/actions/workflow/status/deconvolute-labs/deconvolute/nightly-audit.yml?label=Dependencies%20Audited)](https://github.com/deconvolute-labs/deconvolute/actions/workflows/nightly-audit.yml)
 [![License](https://img.shields.io/pypi/l/deconvolute.svg)](https://pypi.org/project/deconvolute/)
 [![PyPI version](https://img.shields.io/pypi/v/deconvolute.svg?color=green)](https://pypi.org/project/deconvolute/)
 [![Supported Python versions](https://img.shields.io/badge/python->=3.11-blue.svg?)](https://pypi.org/project/deconvolute/)
@@ -16,7 +17,7 @@
 
 When your AI agent calls tools on an MCP server, how do you know that `read_file` tool you discovered at session start is the same tool being executed 10 turns later? 
 
-Deconvolute is a runtime firewall that wraps your MCP session with cryptographic integrity checks. It seals tool definitions at discovery and validates them at execution, preventing protocol-level attacks that happen before any network call is made.
+Deconvolute is a **client-side runtime firewall** that wraps your MCP session with cryptographic integrity checks. It seals tool definitions at discovery and validates them at execution, preventing protocol-level attacks that happen before any network call is made.
 
 ## Quick Start
 
@@ -179,6 +180,34 @@ except SecurityResultError as e:
 **Custom Signatures**: The `SignatureScanner` uses YARA rules. If you need more specific ones than the defaults you can generate YARA rules from your own adversarial datasets using [Yara-Gen](https://github.com/deconvolute-labs/yara-gen) and load them into the scanner.
 
 For detailed examples and configuration, see the [Usage Guide & API Documentation](docs/Readme.md).
+
+## Threat Coverage
+
+The table below maps Deconvolute's coverage to known CVEs and published attack taxonomies in the MCP Python SDK ecosystem.
+
+CVEs marked *(attack class)* demonstrate real-world exploitation of the same vulnerability
+pattern in the MCP ecosystem. Deconvolute addresses the underlying attack vector; the
+specific CVE may affect a different component in that threat category.
+
+| Threat | CVE(s) | CVSS | Deconvolute Coverage | Status |
+|---|---|---|---|---|
+| **Rug Pull / Tool Mutation** | [CVE-2025-6514](https://nvd.nist.gov/vuln/detail/CVE-2025-6514) *(attack class)* | 9.6 Critical | `mcp_guard(integrity="strict")` re-fetches and re-hashes tool definitions before every call. Snapshot & Seal architecture prevents mid-session definition swaps. | ✅ Strong |
+| **Tool Shadowing / Confused Deputy** | [CVE-2025-68143](https://nvd.nist.gov/vuln/detail/CVE-2025-68143), [CVE-2025-68144](https://nvd.nist.gov/vuln/detail/CVE-2025-68144), [CVE-2025-68145](https://nvd.nist.gov/vuln/detail/CVE-2025-68145) | 8.8 High | Default Deny policy blocks any tool not declared in policy. CEL conditions enforce argument-level restrictions, preventing cross-tool abuse even when both tools are individually approved. Blocked tools return `isError=True` in-band without contacting the server. | ✅ Strong |
+| **Missing Integrity Controls on Tool Definitions** | [CVE-2025-53109](https://nvd.nist.gov/vuln/detail/CVE-2025-53109), [CVE-2025-53110](https://nvd.nist.gov/vuln/detail/CVE-2025-53110) | 8.4 / 7.3 High | Cryptographic hash verification at execution time detects any schema mutation before the call is dispatched. | ✅ Strong |
+| **Server Identity Spoofing** | No CVE filed | — | `secure_stdio_session` and `secure_sse_session` bind server identity to its physical transport origin (executable path or URL) before the session starts. | ✅ Good |
+| **Protocol / Version Downgrade** | No CVE filed | — | SemVer constraints in policy (`>=x.y.z, <a.b.c`) enforced at session init. `ServerIdentityError` raised and session blocked on violation. | ✅ Strong |
+| **Prompt Injection via Tool Responses** | [CVE-2025-68143](https://nvd.nist.gov/vuln/detail/CVE-2025-68143)–68145 *(indirect injection chain)* | 8.8 High | `scan()` and `SignatureScanner` with YARA rules inspect tool outputs before they reach the model. Requires explicit integration — not automatic by default. | ✅ Covered |
+| **LLM Output Monitoring / Jailbreak** | No CVE filed | — | `llm_guard()` wraps LLM clients. `CanaryScanner` detects instruction adherence loss and policy violations. | ✅ Good |
+| **Audit Logging** | No CVE filed | — | Structured JSONL audit trail of all tool discovery and execution events via `audit_log=` parameter. | ✅ Strong |
+| **DNS Rebinding on SSE Transport** | [CVE-2025-66416](https://nvd.nist.gov/vuln/detail/CVE-2025-66416) (MCP Python SDK) | 7.6 High | URL string binding prevents naive identity impersonation. IP-level validation, TLS certificate pinning, and Origin header enforcement are in development. | 🔄 In Progress |
+| **Unauthenticated SSE Endpoint** | No CVE filed | — | Out of scope by design — Deconvolute is a client-side guard, not a server hardening tool. | ⚪ Out of Scope |
+| **Session IDs in URL Parameters** | No CVE filed | — | Not addressed. Mitigation belongs at the transport / infrastructure layer. | ❌ Gap |
+
+> **Note on CVE-2025-66416:** This CVE covers a malicious website attacking a *local* MCP
+> server via DNS rebinding. The related gap in Deconvolute is the inverse: a *client* 
+> connecting to a remote SSE endpoint that is redirected to an attacker-controlled server 
+> post-DNS resolution. These are distinct attack directions on the same protocol weakness.
+
 
 ## Research & Efficacy
 
