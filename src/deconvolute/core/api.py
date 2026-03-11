@@ -406,5 +406,7 @@ async def secure_sse_session(
     """
     from deconvolute.clients.mcp import secure_sse_session_impl
 
-    async with secure_sse_session_impl(url, policy_path, integrity) as session:
+    async with secure_sse_session_impl(
+        url, policy_path, integrity, pin_dns=pin_dns
+    ) as session:
         yield session

@@ -503,3 +503,173 @@ async def test_secure_sse_session_impl(
         origin = call_kwargs.get("transport_origin")
         assert isinstance(origin, SSEOrigin)
         assert origin.url == url
+
+
+@pytest.mark.asyncio
+@patch("deconvolute.core.api.mcp_guard")
+@patch("mcp.ClientSession", new_callable=MagicMock)
+@patch("mcp.client.sse.sse_client")
+@patch("socket.getaddrinfo")
+async def test_secure_sse_session_impl_dns_pinning_enabled(
+    mock_getaddrinfo, mock_sse_client, mock_client_session, mock_mcp_guard
+):
+    import socket
+
+    from deconvolute.clients.mcp import secure_sse_session_impl
+
+    # Setup the async context manager mocks
+    mock_sse_client.return_value.__aenter__.return_value = (MagicMock(), MagicMock())
+    mock_client_session.return_value.__aenter__.return_value = MagicMock()
+    mock_mcp_guard.return_value = MagicMock()
+
+    # Mock DNS resolution to return a fake IP
+    # addr_info[0][4][0] -> first result, sockaddr tuple, IP string
+    mock_getaddrinfo.return_value = [(2, 1, 6, "", ("192.168.1.100", 80))]
+
+    url = "https://api.trusted.com/sse"
+
+    with patch("mcp.shared._httpx_utils.create_mcp_http_client") as mock_create_client:
+        mock_http_client = MagicMock()
+        mock_http_client.event_hooks = {"request": []}
+        mock_create_client.return_value = mock_http_client
+
+        async with secure_sse_session_impl(url, "policy.yaml", pin_dns=True):
+            pass
+
+        # Verify DNS was resolved
+        mock_getaddrinfo.assert_called_once_with(
+            "api.trusted.com", port=None, type=socket.SOCK_STREAM
+        )
+
+        # Verify custom HTTPX factory was passed to sse_client
+        call_kwargs = mock_sse_client.call_args[1]
+        factory = call_kwargs.get("httpx_client_factory")
+        assert factory is not None
+        assert factory != mock_create_client
+
+        # Execute the factory to verify it adds the hook
+        client = factory()
+        assert len(client.event_hooks["request"]) == 1
+        hook = client.event_hooks["request"][0]
+        assert hook.__name__ == "pin_dns_hook"
+
+
+@pytest.mark.asyncio
+@patch("deconvolute.core.api.mcp_guard")
+@patch("mcp.ClientSession", new_callable=MagicMock)
+@patch("mcp.client.sse.sse_client")
+@patch("socket.getaddrinfo")
+async def test_secure_sse_session_impl_dns_pinning_disabled(
+    mock_getaddrinfo, mock_sse_client, mock_client_session, mock_mcp_guard
+):
+    from deconvolute.clients.mcp import secure_sse_session_impl
+
+    # Setup the async context manager mocks
+    mock_sse_client.return_value.__aenter__.return_value = (MagicMock(), MagicMock())
+    mock_client_session.return_value.__aenter__.return_value = MagicMock()
+    mock_mcp_guard.return_value = MagicMock()
+
+    url = "https://api.trusted.com/sse"
+
+    with patch("mcp.shared._httpx_utils.create_mcp_http_client") as mock_create_client:
+        async with secure_sse_session_impl(url, "policy.yaml", pin_dns=False):
+            pass
+
+        # Verify DNS was NOT resolved
+        mock_getaddrinfo.assert_not_called()
+
+        # Verify the original HTTPX factory was passed to sse_client
+        call_kwargs = mock_sse_client.call_args[1]
+        factory = call_kwargs.get("httpx_client_factory")
+        assert factory == mock_create_client
+
+
+@pytest.mark.asyncio
+@patch("deconvolute.core.api.mcp_guard")
+@patch("mcp.ClientSession", new_callable=MagicMock)
+@patch("mcp.client.sse.sse_client")
+@patch("socket.getaddrinfo")
+async def test_secure_sse_session_impl_dns_resolution_failure(
+    mock_getaddrinfo, mock_sse_client, mock_client_session, mock_mcp_guard
+):
+    import socket
+
+    from deconvolute.clients.mcp import secure_sse_session_impl
+
+    # Setup mocks
+    mock_sse_client.return_value.__aenter__.return_value = (MagicMock(), MagicMock())
+    mock_client_session.return_value.__aenter__.return_value = MagicMock()
+    mock_mcp_guard.return_value = MagicMock()
+
+    # Simulate a DNS resolution failure
+    mock_getaddrinfo.side_effect = socket.gaierror("Name or service not known")
+
+    url = "https://api.trusted.com/sse"
+
+    with patch("mcp.shared._httpx_utils.create_mcp_http_client") as mock_create_client:
+        async with secure_sse_session_impl(url, "policy.yaml", pin_dns=True):
+            pass
+
+        # Verify DNS was attempted
+        mock_getaddrinfo.assert_called_once()
+
+        # Verify it gracefully fell back to the original HTTPX factory
+        call_kwargs = mock_sse_client.call_args[1]
+        factory = call_kwargs.get("httpx_client_factory")
+        assert factory == mock_create_client
+
+
+@pytest.mark.asyncio
+async def test_secure_sse_session_impl_hook_execution():
+    """
+    Tests the internal logic of the secure_httpx_factory and pin_dns_hook
+    to ensure it properly rewrites the URL and preserves headers.
+    """
+
+    import httpx
+
+    from deconvolute.clients.mcp import secure_sse_session_impl
+
+    # We will mock the context managers to just yield quickly so we can extract
+    # the factory.
+    with (
+        patch("mcp.client.sse.sse_client") as mock_sse_client,
+        patch("mcp.ClientSession"),
+        patch("deconvolute.core.api.mcp_guard"),
+        patch("socket.getaddrinfo") as mock_getaddrinfo,
+    ):
+        mock_sse_client.return_value.__aenter__.return_value = (
+            MagicMock(),
+            MagicMock(),
+        )
+        mock_getaddrinfo.return_value = [(2, 1, 6, "", ("192.168.1.100", 80))]
+
+        url = "https://api.trusted.com/sse"
+
+        async with secure_sse_session_impl(url, "policy.yaml", pin_dns=True):
+            pass
+
+        # Extract the factory that was passed to sse_client
+        call_kwargs = mock_sse_client.call_args[1]
+        factory = call_kwargs.get("httpx_client_factory")
+
+        # Create the client and extract the hook
+        client = factory()
+        hook = client.event_hooks["request"][0]
+
+        # Scenario A: Request matches original host
+        request_matching = httpx.Request("POST", "https://api.trusted.com/messages")
+        await hook(request_matching)
+
+        assert request_matching.url.host == "192.168.1.100"
+        assert request_matching.headers["host"] == "api.trusted.com"
+
+        # Scenario B: Request is to an external third-party domain (should be ignored)
+        request_external = httpx.Request("GET", "https://github.com/api")
+        await hook(request_external)
+
+        assert request_external.url.host == "github.com"
+        assert (
+            "host" not in request_external.headers
+            or request_external.headers["host"] == "github.com"
+        )
