@@ -1,5 +1,6 @@
 import asyncio
 import socket
+from pathlib import Path
 from unittest.mock import patch
 
 import pytest
@@ -40,7 +41,7 @@ app = Starlette(
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("pin_dns", [True, False])
-async def test_dns_pinning_transport_security(tmp_path, pin_dns):
+async def test_dns_pinning_transport_security(pin_dns):
     """
     Verifies that secure_sse_session correctly resolves and pins the IP address,
     ignoring the fake hostname while routing traffic accurately to the socket.
@@ -53,18 +54,8 @@ async def test_dns_pinning_transport_security(tmp_path, pin_dns):
     # Give the socket a moment to bind
     await asyncio.sleep(1)
 
-    # Prepare a dynamic policy file for the test
-    policy_path = tmp_path / "policy.yaml"
-    policy_path.write_text("""
-version: "2.0"
-default_action: block
-servers:
-  test_server:
-    transport:
-      type: "sse"
-      url: "http://api.malicious-rebind.test:8010/sse"
-    tools: []
-    """)
+    # Use the static policy file stored alongside the test file
+    policy_path = Path(__file__).parent / "transport_security_policy.yaml"
 
     # Patch the DNS resolver to simulate the fake domain pointing to localhost
     original_getaddrinfo = socket.getaddrinfo
