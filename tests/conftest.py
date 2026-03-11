@@ -1,3 +1,5 @@
+import shutil
+
 import pytest
 
 from deconvolute.constants import DECONVOLUTE_CACHE_DIR
@@ -15,5 +17,10 @@ def isolated_cache_dir(tmp_path, monkeypatch):
     Every single test function receives a completely fresh, temporary
     directory, ensuring a blank slate and preventing test cross-contamination.
     """
-    monkeypatch.setenv(DECONVOLUTE_CACHE_DIR, str(tmp_path))
-    return tmp_path
+    cache_dir = tmp_path / "deconvolute_cache"
+    cache_dir.mkdir(parents=True, exist_ok=True)
+    monkeypatch.setenv(DECONVOLUTE_CACHE_DIR, str(cache_dir))
+
+    yield cache_dir
+
+    shutil.rmtree(cache_dir, ignore_errors=True)
