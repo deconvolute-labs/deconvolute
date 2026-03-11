@@ -266,3 +266,25 @@ async def test_a_scan_clean(mock_scanner):
 async def test_a_scan_calls_checks(mock_scanner):
     await a_scan("test", scanners=[mock_scanner])
     mock_scanner.a_check.assert_called_once_with("test")
+
+
+@pytest.mark.asyncio
+async def test_secure_sse_session_passes_pin_dns():
+    from deconvolute.core.api import secure_sse_session
+
+    with patch("deconvolute.clients.mcp.secure_sse_session_impl") as mock_impl:
+        # mock_impl returns an asynchronous context manager
+        mock_impl.return_value.__aenter__ = AsyncMock(return_value="mock_session")
+        mock_impl.return_value.__aexit__ = AsyncMock()
+
+        async with secure_sse_session(
+            "http://example.com/sse", pin_dns=False
+        ) as session:
+            assert session == "mock_session"
+
+        mock_impl.assert_called_once_with(
+            "http://example.com/sse",
+            "deconvolute_policy.yaml",
+            "snapshot",
+            pin_dns=False,
+        )

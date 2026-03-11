@@ -374,6 +374,7 @@ async def secure_sse_session(
     url: str,
     policy_path: str = DEFAULT_MCP_POLICY_FILENAME,
     integrity: Literal["snapshot", "strict"] = "snapshot",
+    pin_dns: bool = True,
 ) -> AsyncIterator[Any]:
     """
     Secure context manager for MCP Server-Sent Events (SSE) connections.
@@ -391,6 +392,9 @@ async def secure_sse_session(
                 startup.
             - "strict": Forces a re-verification of the tool definition before every
                 execution.
+        pin_dns: If True (default), resolves the hostname to an IP address exactly
+            once during initialization and pins all subsequent transport requests
+            to that IP. This automatically mitigates DNS Rebinding attacks.
 
     Yields:
         MCPProxy: A secure proxy wrapping the active `mcp.ClientSession`.
@@ -402,5 +406,7 @@ async def secure_sse_session(
     """
     from deconvolute.clients.mcp import secure_sse_session_impl
 
-    async with secure_sse_session_impl(url, policy_path, integrity) as session:
+    async with secure_sse_session_impl(
+        url, policy_path, integrity, pin_dns=pin_dns
+    ) as session:
         yield session

@@ -478,8 +478,9 @@ async def test_secure_stdio_session_impl(
 @patch("deconvolute.core.api.mcp_guard")
 @patch("mcp.ClientSession", new_callable=MagicMock)
 @patch("mcp.client.sse.sse_client")
+@patch("socket.getaddrinfo")
 async def test_secure_sse_session_impl(
-    mock_sse_client, mock_client_session, mock_mcp_guard
+    mock_getaddrinfo, mock_sse_client, mock_client_session, mock_mcp_guard
 ):
     from deconvolute.clients.mcp import secure_sse_session_impl
 
@@ -490,6 +491,8 @@ async def test_secure_sse_session_impl(
 
     mock_guarded_session = MagicMock()
     mock_mcp_guard.return_value = mock_guarded_session
+
+    mock_getaddrinfo.return_value = [(2, 1, 6, "", ("192.168.1.100", 80))]
 
     url = "https://api.trusted.com/sse"
 
@@ -503,3 +506,162 @@ async def test_secure_sse_session_impl(
         origin = call_kwargs.get("transport_origin")
         assert isinstance(origin, SSEOrigin)
         assert origin.url == url
+
+
+@pytest.mark.asyncio
+@patch("deconvolute.core.api.mcp_guard")
+@patch("mcp.ClientSession", new_callable=MagicMock)
+@patch("mcp.client.sse.sse_client")
+@patch("socket.getaddrinfo")
+async def test_secure_sse_session_impl_dns_pinning_enabled(
+    mock_getaddrinfo, mock_sse_client, mock_client_session, mock_mcp_guard
+):
+
+    from deconvolute.clients.mcp import secure_sse_session_impl
+
+    # Setup the async context manager mocks
+    mock_sse_client.return_value.__aenter__.return_value = (MagicMock(), MagicMock())
+    mock_client_session.return_value.__aenter__.return_value = MagicMock()
+    mock_mcp_guard.return_value = MagicMock()
+
+    # Mock DNS resolution to return a fake IP
+    # addr_info[0][4][0] -> first result, sockaddr tuple, IP string
+    mock_getaddrinfo.return_value = [(2, 1, 6, "", ("192.168.1.100", 80))]
+
+    url = "https://api.trusted.com/sse"
+
+    with patch("mcp.shared._httpx_utils.create_mcp_http_client") as mock_create_client:
+        mock_http_client = MagicMock()
+        mock_http_client.event_hooks = {"request": []}
+        mock_create_client.return_value = mock_http_client
+
+        async with secure_sse_session_impl(url, "policy.yaml", pin_dns=True):
+            pass
+
+        # Verify DNS was resolved
+        assert mock_getaddrinfo.call_count == 1
+        args, _ = mock_getaddrinfo.call_args
+        assert args[0] == "api.trusted.com"
+        assert args[1] is None
+
+        # Verify custom HTTPX factory was passed to sse_client
+        call_kwargs = mock_sse_client.call_args[1]
+        factory = call_kwargs.get("httpx_client_factory")
+        assert factory is not None
+        assert factory != mock_create_client
+
+        # Execute the factory to verify it wraps the backend with PinnedNetworkBackend
+        client = factory()
+        assert hasattr(client, "_transport")
+        pool = client._transport._pool
+        backend = pool._network_backend
+        from deconvolute.clients.transport import PinnedNetworkBackend
+
+        assert isinstance(backend, PinnedNetworkBackend)
+        assert backend._original_host == "api.trusted.com"
+        assert backend._pinned_ips == ["192.168.1.100"]
+
+
+@pytest.mark.asyncio
+@patch("deconvolute.core.api.mcp_guard")
+@patch("mcp.ClientSession", new_callable=MagicMock)
+@patch("mcp.client.sse.sse_client")
+@patch("socket.getaddrinfo")
+async def test_secure_sse_session_impl_dns_pinning_disabled(
+    mock_getaddrinfo, mock_sse_client, mock_client_session, mock_mcp_guard
+):
+    from deconvolute.clients.mcp import secure_sse_session_impl
+
+    # Setup the async context manager mocks
+    mock_sse_client.return_value.__aenter__.return_value = (MagicMock(), MagicMock())
+    mock_client_session.return_value.__aenter__.return_value = MagicMock()
+    mock_mcp_guard.return_value = MagicMock()
+
+    url = "https://api.trusted.com/sse"
+
+    with patch("mcp.shared._httpx_utils.create_mcp_http_client") as mock_create_client:
+        async with secure_sse_session_impl(url, "policy.yaml", pin_dns=False):
+            pass
+
+        # Verify DNS was NOT resolved
+        mock_getaddrinfo.assert_not_called()
+
+        # Verify the original HTTPX factory was passed to sse_client
+        call_kwargs = mock_sse_client.call_args[1]
+        factory = call_kwargs.get("httpx_client_factory")
+        assert factory == mock_create_client
+
+
+@pytest.mark.asyncio
+@patch("deconvolute.core.api.mcp_guard")
+@patch("mcp.ClientSession", new_callable=MagicMock)
+@patch("mcp.client.sse.sse_client")
+@patch("socket.getaddrinfo")
+async def test_secure_sse_session_impl_dns_resolution_failure(
+    mock_getaddrinfo, mock_sse_client, mock_client_session, mock_mcp_guard
+):
+    import socket
+
+    from deconvolute.clients.mcp import secure_sse_session_impl
+
+    # Setup mocks
+    mock_sse_client.return_value.__aenter__.return_value = (MagicMock(), MagicMock())
+    mock_client_session.return_value.__aenter__.return_value = MagicMock()
+    mock_mcp_guard.return_value = MagicMock()
+
+    # Simulate a DNS resolution failure
+    mock_getaddrinfo.side_effect = socket.gaierror("Name or service not known")
+
+    url = "https://api.trusted.com/sse"
+
+    with patch("mcp.shared._httpx_utils.create_mcp_http_client"):
+        from deconvolute.errors import DNSResolutionError
+
+        with pytest.raises(DNSResolutionError, match="Strict DNS pinning is enabled"):
+            async with secure_sse_session_impl(url, "policy.yaml", pin_dns=True):
+                pass
+
+        # Verify DNS was attempted
+        assert mock_getaddrinfo.call_count == 1
+
+
+@pytest.mark.asyncio
+async def test_secure_sse_session_impl_hook_execution():
+    """
+    Tests the internal logic of the secure_httpx_factory and pin_dns_hook
+    to ensure it properly rewrites the URL and preserves headers.
+    """
+
+    from deconvolute.clients.mcp import secure_sse_session_impl
+
+    # We will mock the context managers to just yield quickly so we can extract
+    # the factory.
+    with (
+        patch("mcp.client.sse.sse_client") as mock_sse_client,
+        patch("mcp.ClientSession"),
+        patch("deconvolute.core.api.mcp_guard"),
+        patch("socket.getaddrinfo") as mock_getaddrinfo,
+    ):
+        mock_sse_client.return_value.__aenter__.return_value = (
+            MagicMock(),
+            MagicMock(),
+        )
+        mock_getaddrinfo.return_value = [(2, 1, 6, "", ("192.168.1.100", 80))]
+
+        url = "https://api.trusted.com/sse"
+
+        async with secure_sse_session_impl(url, "policy.yaml", pin_dns=True):
+            pass
+
+        # Extract the factory that was passed to sse_client
+        call_kwargs = mock_sse_client.call_args[1]
+        factory = call_kwargs.get("httpx_client_factory")
+
+        # Create the client and verify the PinnedNetworkBackend
+        client = factory()
+        pool = client._transport._pool
+
+        from deconvolute.clients.transport import PinnedNetworkBackend
+
+        assert isinstance(pool._network_backend, PinnedNetworkBackend)
+        assert pool._network_backend._original_host == "api.trusted.com"
