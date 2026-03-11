@@ -15,7 +15,7 @@ from .scanners.content import (
 )
 from .scanners.integrity import CanaryScanner, CanarySecurityResult
 
-__version__ = "0.1.2"
+__version__ = "0.1.3"
 
 # The explicitly tested and supported version of the upstream MCP SDK
 __mcp_supported_version__ = "1.26.0"
