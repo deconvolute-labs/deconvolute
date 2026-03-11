@@ -527,17 +527,80 @@ async def secure_sse_session_impl(
     url: str,
     policy_path: str,
     integrity: IntegrityLevel = "snapshot",
+    pin_dns: bool = True,
 ) -> AsyncIterator[Any]:
     """
     Implementation for the secure sse transport wrapper.
     """
+    import socket
+    from urllib.parse import urlparse
+
+    import httpx
     from mcp.client.sse import sse_client
+    from mcp.shared._httpx_utils import McpHttpClientFactory, create_mcp_http_client
 
     from deconvolute.core.api import mcp_guard
 
     origin = SSEOrigin(type="sse", url=url)
 
-    async with sse_client(url) as (read, write):
+    # Start with the standard MCP HTTPX factory
+    factory: McpHttpClientFactory = create_mcp_http_client
+
+    # DNS Pinning Defense Layer
+    if pin_dns:
+        parsed_url = urlparse(url)
+        original_host = parsed_url.hostname
+
+        if original_host:
+            try:
+                # Resolve IP once for IPv4/IPv6, filtering for TCP (SOCK_STREAM).
+                # TODO: Extract IP directly from httpx connection pool post-handshake.
+                # Current getaddrinfo approach bypasses Happy Eyeballs fallback,
+                # which may cause timeouts in environments with blackholed IPv6.
+                addr_info = socket.getaddrinfo(
+                    original_host, port=None, type=socket.SOCK_STREAM
+                )
+
+                # Extract the IP string from the highest-priority route
+                # [0] -> First result from OS, [4] -> sockaddr tuple, [0] -> IP string
+                pinned_ip = addr_info[0][4][0]
+                logger.debug(
+                    f"Deconvolute Firewall: Pinned DNS for {original_host} to "
+                    f"{pinned_ip}"
+                )
+
+                def secure_httpx_factory(
+                    *args: Any, **kwargs: Any
+                ) -> httpx.AsyncClient:
+                    # Get a base client from the standard MCP factory
+                    client = create_mcp_http_client(*args, **kwargs)
+
+                    async def pin_dns_hook(request: httpx.Request) -> None:
+                        if request.url.host == original_host:
+                            # Preserve the original Host header for WAFs and routing
+                            if "host" not in request.headers:
+                                request.headers["host"] = original_host
+
+                            # Force the underlying socket connection to the pinned IP
+                            request.url = request.url.copy_with(host=pinned_ip)
+
+                    # Register the request hook to intercept all outbound calls
+                    client.event_hooks["request"].append(pin_dns_hook)
+                    return client
+
+                # Override the default factory with our secure proxy
+                factory = secure_httpx_factory
+
+            except socket.gaierror as e:
+                logger.warning(
+                    f"Deconvolute Firewall: Failed to resolve {original_host} for DNS "
+                    f"pinning: {e}"
+                )
+                # If resolution fails outright (e.g. offline), we gracefully fall back
+                # to the standard factory and let HTTPX handle the connection failure
+                # naturally.
+
+    async with sse_client(url, httpx_client_factory=factory) as (read, write):
         async with ClientSession(read, write) as session:
             guarded_session = mcp_guard(
                 session,
