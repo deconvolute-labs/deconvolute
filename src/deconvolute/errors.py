@@ -77,3 +77,21 @@ class ServerIdentityError(MCPSessionError):
     """
 
     pass
+
+
+class DNSResolutionError(DeconvoluteError):
+    """
+    Raised when strict DNS pinning is enabled but the target hostname cannot
+    be resolved.
+    """
+
+    pass
+
+
+class PinnedConnectionError(DeconvoluteError):
+    """
+    Raised when the secure transport fails to establish a TCP connection to any of
+    the pinned IP addresses.
+    """
+
+    pass

@@ -478,8 +478,9 @@ async def test_secure_stdio_session_impl(
 @patch("deconvolute.core.api.mcp_guard")
 @patch("mcp.ClientSession", new_callable=MagicMock)
 @patch("mcp.client.sse.sse_client")
+@patch("socket.getaddrinfo")
 async def test_secure_sse_session_impl(
-    mock_sse_client, mock_client_session, mock_mcp_guard
+    mock_getaddrinfo, mock_sse_client, mock_client_session, mock_mcp_guard
 ):
     from deconvolute.clients.mcp import secure_sse_session_impl
 
@@ -490,6 +491,8 @@ async def test_secure_sse_session_impl(
 
     mock_guarded_session = MagicMock()
     mock_mcp_guard.return_value = mock_guarded_session
+
+    mock_getaddrinfo.return_value = [(2, 1, 6, "", ("192.168.1.100", 80))]
 
     url = "https://api.trusted.com/sse"
 
@@ -513,7 +516,6 @@ async def test_secure_sse_session_impl(
 async def test_secure_sse_session_impl_dns_pinning_enabled(
     mock_getaddrinfo, mock_sse_client, mock_client_session, mock_mcp_guard
 ):
-    import socket
 
     from deconvolute.clients.mcp import secure_sse_session_impl
 
@@ -537,9 +539,10 @@ async def test_secure_sse_session_impl_dns_pinning_enabled(
             pass
 
         # Verify DNS was resolved
-        mock_getaddrinfo.assert_called_once_with(
-            "api.trusted.com", port=None, type=socket.SOCK_STREAM
-        )
+        assert mock_getaddrinfo.call_count == 1
+        args, _ = mock_getaddrinfo.call_args
+        assert args[0] == "api.trusted.com"
+        assert args[1] is None
 
         # Verify custom HTTPX factory was passed to sse_client
         call_kwargs = mock_sse_client.call_args[1]
@@ -547,11 +550,16 @@ async def test_secure_sse_session_impl_dns_pinning_enabled(
         assert factory is not None
         assert factory != mock_create_client
 
-        # Execute the factory to verify it adds the hook
+        # Execute the factory to verify it wraps the backend with PinnedNetworkBackend
         client = factory()
-        assert len(client.event_hooks["request"]) == 1
-        hook = client.event_hooks["request"][0]
-        assert hook.__name__ == "pin_dns_hook"
+        assert hasattr(client, "_transport")
+        pool = client._transport._pool
+        backend = pool._network_backend
+        from deconvolute.clients.transport import PinnedNetworkBackend
+
+        assert isinstance(backend, PinnedNetworkBackend)
+        assert backend._original_host == "api.trusted.com"
+        assert backend._pinned_ips == ["192.168.1.100"]
 
 
 @pytest.mark.asyncio
@@ -606,17 +614,15 @@ async def test_secure_sse_session_impl_dns_resolution_failure(
 
     url = "https://api.trusted.com/sse"
 
-    with patch("mcp.shared._httpx_utils.create_mcp_http_client") as mock_create_client:
-        async with secure_sse_session_impl(url, "policy.yaml", pin_dns=True):
-            pass
+    with patch("mcp.shared._httpx_utils.create_mcp_http_client"):
+        from deconvolute.errors import DNSResolutionError
+
+        with pytest.raises(DNSResolutionError, match="Strict DNS pinning is enabled"):
+            async with secure_sse_session_impl(url, "policy.yaml", pin_dns=True):
+                pass
 
         # Verify DNS was attempted
-        mock_getaddrinfo.assert_called_once()
-
-        # Verify it gracefully fell back to the original HTTPX factory
-        call_kwargs = mock_sse_client.call_args[1]
-        factory = call_kwargs.get("httpx_client_factory")
-        assert factory == mock_create_client
+        assert mock_getaddrinfo.call_count == 1
 
 
 @pytest.mark.asyncio
@@ -625,8 +631,6 @@ async def test_secure_sse_session_impl_hook_execution():
     Tests the internal logic of the secure_httpx_factory and pin_dns_hook
     to ensure it properly rewrites the URL and preserves headers.
     """
-
-    import httpx
 
     from deconvolute.clients.mcp import secure_sse_session_impl
 
@@ -653,23 +657,11 @@ async def test_secure_sse_session_impl_hook_execution():
         call_kwargs = mock_sse_client.call_args[1]
         factory = call_kwargs.get("httpx_client_factory")
 
-        # Create the client and extract the hook
+        # Create the client and verify the PinnedNetworkBackend
         client = factory()
-        hook = client.event_hooks["request"][0]
+        pool = client._transport._pool
 
-        # Scenario A: Request matches original host
-        request_matching = httpx.Request("POST", "https://api.trusted.com/messages")
-        await hook(request_matching)
+        from deconvolute.clients.transport import PinnedNetworkBackend
 
-        assert request_matching.url.host == "192.168.1.100"
-        assert request_matching.headers["host"] == "api.trusted.com"
-
-        # Scenario B: Request is to an external third-party domain (should be ignored)
-        request_external = httpx.Request("GET", "https://github.com/api")
-        await hook(request_external)
-
-        assert request_external.url.host == "github.com"
-        assert (
-            "host" not in request_external.headers
-            or request_external.headers["host"] == "github.com"
-        )
+        assert isinstance(pool._network_backend, PinnedNetworkBackend)
+        assert pool._network_backend._original_host == "api.trusted.com"

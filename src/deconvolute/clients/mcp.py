@@ -530,8 +530,24 @@ async def secure_sse_session_impl(
     pin_dns: bool = True,
 ) -> AsyncIterator[Any]:
     """
-    Implementation for the secure sse transport wrapper.
+    Implementation for the secure sse transport wrapper with transparent DNS pinning.
+
+    This context manager connects to a remote MCP server using Server-Sent Events.
+    If DNS pinning is enabled, it resolves the hostname asynchronously and routes
+    the underlying TCP socket to the pinned IP, preventing DNS Rebinding attacks
+    while fully preserving TLS certificate validation.
+
+    Args:
+        url (str): The target SSE endpoint URL.
+        policy_path (str): Path to the Deconvolute security policy.
+        integrity (IntegrityLevel, optional): The integrity check mode. Defaults to
+            "snapshot".
+        pin_dns (bool, optional): Whether to enforce DNS pinning. Defaults to True.
+
+    Yields:
+        AsyncIterator[Any]: The guarded MCP ClientSession proxy.
     """
+    import asyncio
     import socket
     from urllib.parse import urlparse
 
@@ -539,6 +555,7 @@ async def secure_sse_session_impl(
     from mcp.client.sse import sse_client
     from mcp.shared._httpx_utils import McpHttpClientFactory, create_mcp_http_client
 
+    from deconvolute.clients.transport import PinnedNetworkBackend
     from deconvolute.core.api import mcp_guard
 
     origin = SSEOrigin(type="sse", url=url)
@@ -553,52 +570,61 @@ async def secure_sse_session_impl(
 
         if original_host:
             try:
-                # Resolve IP once for IPv4/IPv6, filtering for TCP (SOCK_STREAM).
-                # TODO: Extract IP directly from httpx connection pool post-handshake.
-                # Current getaddrinfo approach bypasses Happy Eyeballs fallback,
-                # which may cause timeouts in environments with blackholed IPv6.
-                addr_info = socket.getaddrinfo(
+                # DNS resolution
+                loop = asyncio.get_running_loop()
+                addr_info = await loop.getaddrinfo(
                     original_host, port=None, type=socket.SOCK_STREAM
                 )
 
-                # Extract the IP string from the highest-priority route
-                # [0] -> First result from OS, [4] -> sockaddr tuple, [0] -> IP string
-                pinned_ip = addr_info[0][4][0]
+                # Extract all unique IP strings, preserving the OS's priority order
+                pinned_ips: list[str] = []
+                for info in addr_info:
+                    ip = info[4][0]
+                    if ip not in pinned_ips:
+                        pinned_ips.append(ip)
+
                 logger.debug(
                     f"Deconvolute Firewall: Pinned DNS for {original_host} to "
-                    f"{pinned_ip}"
+                    f"{pinned_ips}"
                 )
 
                 def secure_httpx_factory(
                     *args: Any, **kwargs: Any
                 ) -> httpx.AsyncClient:
-                    # Get a base client from the standard MCP factory
+                    # Obtain the fully configured client from the MCP SDK to
+                    # preserve strict typing and default timeout configurations.
                     client = create_mcp_http_client(*args, **kwargs)
 
-                    async def pin_dns_hook(request: httpx.Request) -> None:
-                        if request.url.host == original_host:
-                            # Preserve the original Host header for WAFs and routing
-                            if "host" not in request.headers:
-                                request.headers["host"] = original_host
-
-                            # Force the underlying socket connection to the pinned IP
-                            request.url = request.url.copy_with(host=pinned_ip)
-
-                    # Register the request hook to intercept all outbound calls
-                    client.event_hooks["request"].append(pin_dns_hook)
+                    # Defensively wrap the internal connection pool.
+                    # HTTPX encapsulates the network backend inside its transport layer.
+                    if hasattr(client, "_transport") and hasattr(
+                        client._transport, "_pool"
+                    ):
+                        pool = client._transport._pool
+                        if hasattr(pool, "_network_backend"):
+                            default_backend = pool._network_backend
+                            pool._network_backend = PinnedNetworkBackend(
+                                original_host=original_host,
+                                pinned_ips=pinned_ips,
+                                backend=default_backend,
+                            )
                     return client
 
-                # Override the default factory with our secure proxy
+                # Override the default factory with our secure factory
                 factory = secure_httpx_factory
 
-            except socket.gaierror as e:
-                logger.warning(
-                    f"Deconvolute Firewall: Failed to resolve {original_host} for DNS "
-                    f"pinning: {e}"
+            except (socket.gaierror, IndexError) as e:
+                from deconvolute.errors import DNSResolutionError
+
+                logger.error(
+                    f"Deconvolute Firewall: Strict DNS pinning failed to resolve "
+                    f"'{original_host}': {e}"
                 )
-                # If resolution fails outright (e.g. offline), we gracefully fall back
-                # to the standard factory and let HTTPX handle the connection failure
-                # naturally.
+                raise DNSResolutionError(
+                    f"Strict DNS pinning is enabled, but '{original_host}' could not "
+                    f"be resolved. Disable pin_dns if this environment does not "
+                    f"support native DNS resolution. Details: {e}"
+                ) from e
 
     async with sse_client(url, httpx_client_factory=factory) as (read, write):
         async with ClientSession(read, write) as session:
