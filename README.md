@@ -199,7 +199,7 @@ specific CVE may affect a different component in that threat category.
 | **Prompt Injection via Tool Responses** | [CVE-2025-68143](https://nvd.nist.gov/vuln/detail/CVE-2025-68143)–68145 *(indirect injection chain)* | 8.8 High | `scan()` and `SignatureScanner` with YARA rules inspect tool outputs before they reach the model. Requires explicit integration, not automatic by default. | ✅ Covered |
 | **LLM Output Monitoring / Jailbreak** | No CVE filed | — | `llm_guard()` wraps LLM clients. `CanaryScanner` detects instruction adherence loss and policy violations. | ✅ Good |
 | **Audit Logging** | No CVE filed | — | Structured JSONL audit trail of all tool discovery and execution events via `audit_log=` parameter. | ✅ Strong |
-| **DNS Rebinding on SSE Transport** | [CVE-2025-66416](https://nvd.nist.gov/vuln/detail/CVE-2025-66416) (MCP Python SDK) | 7.6 High | Transport layer wrapper automatically pins the resolved IP address at session initialization, completely neutralizing mid-session DNS switches and rebinding attacks. | ✅ Mitigated |
+| **DNS Rebinding on SSE Transport** | No CVE filed | — | Transport layer wrapper automatically pins the resolved IP address at session initialization, completely neutralizing mid-session DNS switches and rebinding attacks. | ✅ Mitigated |
 | **Unauthenticated SSE Endpoint** | No CVE filed | — | Out of scope by design — Deconvolute is a client-side guard, not a server hardening tool. | ⚪ Out of Scope |
 | **Session IDs in URL Parameters** | No CVE filed | — | Not addressed. Mitigation belongs at the transport / infrastructure layer. | ❌ Gap |
 
