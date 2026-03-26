@@ -7,8 +7,26 @@ on:
   workflow_dispatch:
 
 jobs:
+  check-prev-run:
+    name: Check previous run
+    runs-on: ubuntu-latest
+    outputs:
+      conclusion: ${{ steps.prev-run.outputs.conclusion }}
+    steps:
+      - name: Get previous run conclusion
+        id: prev-run
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          conclusion=$(gh api "repos/${{ github.repository }}/actions/workflows/nightly-audit.yml/runs" \
+            -F per_page=5 \
+            --jq '.workflow_runs[1].conclusion')
+          echo "conclusion=$conclusion" >> $GITHUB_OUTPUT
+
   audit:
     name: Run pip-audit
+    needs: check-prev-run
+    if: needs.check-prev-run.outputs.conclusion != 'failure'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
