@@ -15,7 +15,7 @@
 [User Guide & API Docs](https://docs.deconvolutelabs.com?utm_source=github.com&utm_campaign=header&utm_medium=readme) | [Homepage](https://deconvolutelabs.com?utm_source=github.com&utm_campaign=header&utm_medium=readme) | [Watch MCP Rug Pull Demo](https://www.youtube.com/watch?v=8jjx-U-4FAA)
 </h3>
 
-When your AI agent calls tools on an MCP server, how do you know that `read_file` tool you discovered at session start is the same tool being executed 10 turns later? 
+When your AI agent calls tools on an MCP server, how do you know that `read_file` tool you discovered at session start is the same tool being executed 10 turns later?
 
 Deconvolute is a **client-side runtime firewall** that wraps your MCP session with cryptographic integrity checks. It seals tool definitions at discovery and validates them at execution, preventing protocol-level attacks that happen before any network call is made.
 
@@ -24,7 +24,8 @@ Deconvolute is a **client-side runtime firewall** that wraps your MCP session wi
 Install the SDK:
 
 ```bash
-pip install deconvolute
+pip install deconvolute           # MCP firewall only, lightweight
+pip install deconvolute[scanners] # full suite including content scanners
 ```
 
 Generate a default security policy:
@@ -69,6 +70,7 @@ Stateless scanners inspect individual payloads but often miss infrastructure att
 **Seal**: When a tool is executed, the firewall verifies that the current definition matches the stored hash.
 
 This architecture prevents:
+
 - **Shadowing**: A server that exposes undeclared tools or hides malicious functionality
 - **Rug Pulls**: Servers that change a tool's definition between discovery and execution
 - **Confused Deputy**: Ensuring only approved tools from your policy can be invoked
@@ -116,7 +118,7 @@ async with secure_stdio_session(params, policy_path="policy.yaml") as safe_sessi
 
 ### Enterprise-Grade Policy Engine
 
-Deconvolute goes beyond simple allow/block lists. For strict security environments, it includes a robust, zero-trust rules engine powered by the Common Expression Language (CEL). 
+Deconvolute goes beyond simple allow/block lists. For strict security environments, it includes a robust, zero-trust rules engine powered by the Common Expression Language (CEL).
 
 Write fine-grained, conditional policies to inspect tool arguments in real-time before they execute:
 
@@ -204,10 +206,9 @@ specific CVE may affect a different component in that threat category.
 | **Session IDs in URL Parameters** | No CVE filed | — | Not addressed. Mitigation belongs at the transport / infrastructure layer. | ❌ Gap |
 
 > **Note on CVE-2025-66416:** This CVE covers a malicious website attacking a *local* MCP
-> server via DNS rebinding. The related gap in Deconvolute is the inverse: a *client* 
-> connecting to a remote SSE endpoint that is redirected to an attacker-controlled server 
+> server via DNS rebinding. The related gap in Deconvolute is the inverse: a *client*
+> connecting to a remote SSE endpoint that is redirected to an attacker-controlled server
 > post-DNS resolution. These are distinct attack directions on the same protocol weakness.
-
 
 ## Research & Efficacy
 
@@ -220,6 +221,7 @@ We rely on empirical validation rather than heuristics. Our scanners are benchma
 | `SignatureScanner` | Prompt Injection / RAG Poisoning | ![Status: Experimental](https://img.shields.io/badge/Status-Experimental-orange) | Detects known patterns via signature matching. |
 
 **Status guide:**
+
 - **Experimental**: Functionally complete and unit-tested, but not yet fully validated in production.
 - **Validated**: Empirically tested with benchmarked results.
 
@@ -238,17 +240,16 @@ For reproducible experiments and performance metrics, see the [Benchmarks Reposi
 <details>
 <summary>Click to view sources</summary>
 
-Geng, Yilin, Haonan Li, Honglin Mu, et al. "Control Illusion: The Failure of Instruction Hierarchies in Large Language Models." arXiv:2502.15851. Preprint, arXiv, December 4, 2025. https://doi.org/10.48550/arXiv.2502.15851.
+Geng, Yilin, Haonan Li, Honglin Mu, et al. "Control Illusion: The Failure of Instruction Hierarchies in Large Language Models." arXiv:2502.15851. Preprint, arXiv, December 4, 2025. <https://doi.org/10.48550/arXiv.2502.15851>.
 
-Guo, Yongjian, Puzhuo Liu, Wanlun Ma, et al. “Systematic Analysis of MCP Security.” arXiv:2508.12538. Preprint, arXiv, August 18, 2025. https://doi.org/10.48550/arXiv.2508.12538.
+Guo, Yongjian, Puzhuo Liu, Wanlun Ma, et al. “Systematic Analysis of MCP Security.” arXiv:2508.12538. Preprint, arXiv, August 18, 2025. <https://doi.org/10.48550/arXiv.2508.12538>.
 
-Greshake, Kai, Sahar Abdelnabi, Shailesh Mishra, Christoph Endres, Thorsten Holz, and Mario Fritz. "Not What You've Signed Up For: Compromising Real-World LLM-Integrated Applications with Indirect Prompt Injection." Proceedings of the 16th ACM Workshop on Artificial Intelligence and Security, November 30, 2023, 79–90. https://doi.org/10.1145/3605764.3623985.
+Greshake, Kai, Sahar Abdelnabi, Shailesh Mishra, Christoph Endres, Thorsten Holz, and Mario Fritz. "Not What You've Signed Up For: Compromising Real-World LLM-Integrated Applications with Indirect Prompt Injection." Proceedings of the 16th ACM Workshop on Artificial Intelligence and Security, November 30, 2023, 79–90. <https://doi.org/10.1145/3605764.3623985>.
 
-Liu, Yupei, Yuqi Jia, Runpeng Geng, Jinyuan Jia, and Neil Zhenqiang Gong. "Formalizing and Benchmarking Prompt Injection Attacks and Defenses." Version 5. Preprint, arXiv, 2023. https://doi.org/10.48550/ARXIV.2310.12815.
+Liu, Yupei, Yuqi Jia, Runpeng Geng, Jinyuan Jia, and Neil Zhenqiang Gong. "Formalizing and Benchmarking Prompt Injection Attacks and Defenses." Version 5. Preprint, arXiv, 2023. <https://doi.org/10.48550/ARXIV.2310.12815>.
 
-Wallace, Eric, Kai Xiao, Reimar Leike, Lilian Weng, Johannes Heidecke, and Alex Beutel. "The Instruction Hierarchy: Training LLMs to Prioritize Privileged Instructions." arXiv:2404.13208. Preprint, arXiv, April 19, 2024. https://doi.org/10.48550/arXiv.2404.13208.
+Wallace, Eric, Kai Xiao, Reimar Leike, Lilian Weng, Johannes Heidecke, and Alex Beutel. "The Instruction Hierarchy: Training LLMs to Prioritize Privileged Instructions." arXiv:2404.13208. Preprint, arXiv, April 19, 2024. <https://doi.org/10.48550/arXiv.2404.13208>.
 
-Zou, Wei, Runpeng Geng, Binghui Wang, and Jinyuan Jia. "PoisonedRAG: Knowledge Corruption Attacks to Retrieval-Augmented Generation of Large Language Models." arXiv:2402.07867. Preprint, arXiv, August 13, 2024. https://doi.org/10.48550/arXiv.2402.07867.
-
+Zou, Wei, Runpeng Geng, Binghui Wang, and Jinyuan Jia. "PoisonedRAG: Knowledge Corruption Attacks to Retrieval-Augmented Generation of Large Language Models." arXiv:2402.07867. Preprint, arXiv, August 13, 2024. <https://doi.org/10.48550/arXiv.2402.07867>.
 
 </details>

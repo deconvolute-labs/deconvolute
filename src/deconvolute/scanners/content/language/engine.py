@@ -51,8 +51,8 @@ class LanguageScanner(BaseScanner):
         """
         if not HAS_LINGUA:
             raise ConfigurationError(
-                "LanguageScanner requires the 'lingua' library.\n"
-                "Please install it with: pip install deconvolute[language]"
+                "LanguageScanner requires optional dependencies. "
+                "Please install it with: 'pip install deconvolute[scanners]'"
             )
 
         self.allowed_codes = [code.lower() for code in (allowed_languages or [])]
