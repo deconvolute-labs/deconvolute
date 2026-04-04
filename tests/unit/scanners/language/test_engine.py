@@ -64,7 +64,7 @@ def test_init_raises_error_if_lingua_missing(mock_lingua_missing):
     """It should raise ConfigurationError if lingua is not installed."""
     with pytest.raises(ConfigurationError) as exc:
         LanguageScanner()
-    assert "pip install deconvolute[language]" in str(exc.value)
+    assert "pip install deconvolute[scanners]" in str(exc.value)
 
 
 def test_init_loads_all_languages_by_default(mock_lingua):

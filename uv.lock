@@ -437,12 +437,16 @@ name = "deconvolute"
 source = { editable = "." }
 dependencies = [
     { name = "cel-python" },
-    { name = "lingua-language-detector" },
     { name = "packaging" },
     { name = "platformdirs" },
     { name = "pydantic" },
     { name = "pydantic-settings" },
     { name = "pyyaml" },
+]
+
+[package.optional-dependencies]
+scanners = [
+    { name = "lingua-language-detector" },
     { name = "yara-python" },
 ]
 
@@ -464,14 +468,15 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "cel-python", specifier = ">=0.5.0" },
-    { name = "lingua-language-detector", specifier = ">=2.1.1" },
+    { name = "lingua-language-detector", marker = "extra == 'scanners'", specifier = ">=2.1.1" },
     { name = "packaging", specifier = ">=26.0" },
     { name = "platformdirs", specifier = ">=4.9.4" },
     { name = "pydantic", specifier = ">=2.0" },
     { name = "pydantic-settings", specifier = ">=2.0" },
     { name = "pyyaml", specifier = ">=6.0" },
-    { name = "yara-python", specifier = ">=4.5.4" },
+    { name = "yara-python", marker = "extra == 'scanners'", specifier = ">=4.5.4" },
 ]
+provides-extras = ["scanners"]
 
 [package.metadata.requires-dev]
 dev = [
