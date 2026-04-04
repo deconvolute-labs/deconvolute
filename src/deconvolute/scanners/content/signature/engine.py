@@ -3,16 +3,18 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import Any
 
-import yara
-
 from deconvolute.errors import ConfigurationError
-from deconvolute.models.security import (
-    SecurityComponent,
-    SecurityResult,
-    SecurityStatus,
-)
+from deconvolute.models.security import (SecurityComponent, SecurityResult,
+                                         SecurityStatus)
 from deconvolute.scanners.base import BaseScanner
 from deconvolute.utils.logger import get_logger
+
+try:
+    import yara
+    HAS_YARA = True
+except ImportError:
+    HAS_YARA = False
+
 
 logger = get_logger()
 
@@ -58,6 +60,11 @@ class SignatureScanner(BaseScanner):
             ConfigurationError: If the rule file does not exist or contains syntax
                 errors that prevent compilation.
         """
+        if not HAS_YARA:
+            raise ConfigurationError(
+                "SignatureScanner requires optional dependencies. "
+                "Please install it with: 'pip install deconvolute[scanners]'"
+            )
         self._executor = ThreadPoolExecutor()
 
         self.local_path = Path(rules_path) if rules_path else DEFAULT_RULES_DIR
