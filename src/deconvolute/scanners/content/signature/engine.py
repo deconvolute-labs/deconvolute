@@ -4,13 +4,17 @@ from pathlib import Path
 from typing import Any
 
 from deconvolute.errors import ConfigurationError
-from deconvolute.models.security import (SecurityComponent, SecurityResult,
-                                         SecurityStatus)
+from deconvolute.models.security import (
+    SecurityComponent,
+    SecurityResult,
+    SecurityStatus,
+)
 from deconvolute.scanners.base import BaseScanner
 from deconvolute.utils.logger import get_logger
 
 try:
     import yara
+
     HAS_YARA = True
 except ImportError:
     HAS_YARA = False
