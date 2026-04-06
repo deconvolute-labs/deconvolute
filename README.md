@@ -61,6 +61,12 @@ if result.isError:
 
 This creates a `deconvolute_policy.yaml` file in your working directory you can edit. You are now protected against unauthorized tool execution and mid-session tampering.
 
+## Using a Closed Agent Runtime?
+
+If you are deploying agents through a closed runtime such as Claude Cowork or
+Microsoft Copilot, you cannot wrap the client session directly with `mcp_guard`.
+In that case, use the [deconvolute-proxy](https://github.com/deconvolute-labs/deconvolute-proxy), a standalone HTTP server that sits between the agent runtime and your MCP servers and enforces the same policy-as-code security layer.
+
 ## The MCP Firewall
 
 Stateless scanners inspect individual payloads but often miss infrastructure attacks where a compromised MCP server swaps a tool definition after it has been discovered. Deconvolute solves this with a **Snapshot & Seal** architecture:
