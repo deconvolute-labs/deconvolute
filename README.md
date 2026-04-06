@@ -1,6 +1,6 @@
 # Deconvolute: The MCP Application Firewall
 
-**Secure your MCP agents against tool shadowing, rug pulls, and credential theft with a single wrapper.**
+**Policy-as-code enforcement and observability for MCP tool calls.**
 
 [![CI](https://github.com/deconvolute-labs/deconvolute/actions/workflows/ci.yml/badge.svg)](https://github.com/deconvolute-labs/deconvolute/actions/workflows/ci.yml)
 [![Audit](https://img.shields.io/github/actions/workflow/status/deconvolute-labs/deconvolute/nightly-audit.yml?label=Dependencies%20Audited)](https://github.com/deconvolute-labs/deconvolute/actions/workflows/nightly-audit.yml)
@@ -15,9 +15,9 @@
 [User Guide & API Docs](https://docs.deconvolutelabs.com?utm_source=github.com&utm_campaign=header&utm_medium=readme) | [Homepage](https://deconvolutelabs.com?utm_source=github.com&utm_campaign=header&utm_medium=readme) | [Watch MCP Rug Pull Demo](https://www.youtube.com/watch?v=8jjx-U-4FAA)
 </h3>
 
-When your AI agent calls tools on an MCP server, how do you know that `read_file` tool you discovered at session start is the same tool being executed 10 turns later?
+Deconvolute is a **client-side runtime firewall** for the Model Context Protocol. It wraps your MCP session with policy enforcement, cryptographic integrity checks, and a full audit trail, giving security teams deterministic control over what AI agents can do at the tool call surface.
 
-Deconvolute is a **client-side runtime firewall** that wraps your MCP session with cryptographic integrity checks. It seals tool definitions at discovery and validates them at execution, preventing protocol-level attacks that happen before any network call is made.
+When your agent calls tools on an MCP server, Deconvolute enforces which tools are permitted, validates their definitions against a cryptographic baseline, and logs every call. If an agent attempts a tool call outside your declared policy, whether from a legitimate request, an ambiguous instruction, or a manipulated input, it is blocked before any request reaches the server.
 
 ## Quick Start
 
