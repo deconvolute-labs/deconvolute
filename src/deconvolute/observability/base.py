@@ -11,7 +11,12 @@ class BaseObservabilityBackend(abc.ABC):
     """
 
     @abc.abstractmethod
-    def log_event(self, event_type: str, payload: dict[str, Any]) -> None:
+    def log_event(
+        self,
+        event_type: str,
+        payload: dict[str, Any],
+        agent_id: str | None = None,
+    ) -> None:
         """
         Records a telemetry event to the underlying storage mechanism.
 
@@ -20,6 +25,8 @@ class BaseObservabilityBackend(abc.ABC):
                 (e.g. 'SESSION_DISCOVERY', 'SESSION_ACCESS').
             payload (dict[str, Any]): A dictionary containing the full context
                 of the event. This must be JSON serializable.
+            agent_id (str | None, optional): An optional identifier for the agent
+                that produced the event. Defaults to None.
         """
         pass
 
