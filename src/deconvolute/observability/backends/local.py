@@ -42,7 +42,9 @@ class LocalObservabilityBackend(BaseObservabilityBackend):
                 that produced the event. Defaults to None.
         """
         try:
-            self.store.log_audit_event(event_type=event_type, payload=payload, agent_id=agent_id)
+            self.store.log_audit_event(
+                event_type=event_type, payload=payload, agent_id=agent_id
+            )
         except Exception as e:
             # We never want a failure in telemetry to crash the user's main application
             logger.error(f"Failed to write audit event '{event_type}' to SQLite: {e}")
