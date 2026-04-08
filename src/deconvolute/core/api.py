@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING, Any, Literal, TypeVar
 
 if TYPE_CHECKING:
     import mcp.types
+
 from deconvolute.constants import DECONVOLUTE_API_KEY, DEFAULT_MCP_POLICY_FILENAME
 from deconvolute.core.defaults import get_guard_defaults, get_scan_defaults
 from deconvolute.core.firewall import MCPFirewall
@@ -32,6 +33,7 @@ def mcp_guard(
     integrity: Literal["snapshot", "strict"] = "snapshot",
     transport_origin: TransportOrigin | None = None,
     init_result: "mcp.types.InitializeResult | None" = None,
+    agent_id: str | None = None,
 ) -> T:
     """
     Wraps an MCP ClientSession with the Deconvolute Firewall.
@@ -57,6 +59,7 @@ def mcp_guard(
         init_result: Optional mcp.types.InitializeResult. Pass this if the session
             was already initialized prior to wrapping, to ensure the firewall
             can evaluate the server's version and identity.
+        agent_id: An optional identifier for the agent using this firewall.
 
     Returns:
         A CallToolResult with isError=True if the tool is unauthorized.
@@ -92,7 +95,7 @@ def mcp_guard(
     policy = PolicyLoader.load(policy_path)
 
     # Initialize the Firewall Engine
-    firewall = MCPFirewall(policy)
+    firewall = MCPFirewall(policy, agent_id=agent_id)
 
     # Lazy Import the Proxy
     # We only import this here to avoid crashing apps that don't have 'mcp' installed.
@@ -334,6 +337,7 @@ async def secure_stdio_session(
     server_parameters: Any,
     policy_path: str = DEFAULT_MCP_POLICY_FILENAME,
     integrity: Literal["snapshot", "strict"] = "snapshot",
+    agent_id: str | None = None,
 ) -> AsyncIterator[Any]:
     """
     Secure context manager for MCP stdio connections.
@@ -352,6 +356,7 @@ async def secure_stdio_session(
                 startup.
             - "strict": Forces a re-verification of the tool definition before every
                 execution.
+        agent_id: An optional identifier for the agent using this firewall.
 
     Yields:
         MCPProxy: A secure proxy wrapping the active `mcp.ClientSession`.
@@ -364,7 +369,7 @@ async def secure_stdio_session(
     from deconvolute.clients.mcp import secure_stdio_session_impl
 
     async with secure_stdio_session_impl(
-        server_parameters, policy_path, integrity
+        server_parameters, policy_path, integrity, agent_id=agent_id
     ) as session:
         yield session
 
@@ -375,6 +380,7 @@ async def secure_sse_session(
     policy_path: str = DEFAULT_MCP_POLICY_FILENAME,
     integrity: Literal["snapshot", "strict"] = "snapshot",
     pin_dns: bool = True,
+    agent_id: str | None = None,
 ) -> AsyncIterator[Any]:
     """
     Secure context manager for MCP Server-Sent Events (SSE) connections.
@@ -395,6 +401,7 @@ async def secure_sse_session(
         pin_dns: If True (default), resolves the hostname to an IP address exactly
             once during initialization and pins all subsequent transport requests
             to that IP. This automatically mitigates DNS Rebinding attacks.
+        agent_id: An optional identifier for the agent using this firewall.
 
     Yields:
         MCPProxy: A secure proxy wrapping the active `mcp.ClientSession`.
@@ -407,6 +414,6 @@ async def secure_sse_session(
     from deconvolute.clients.mcp import secure_sse_session_impl
 
     async with secure_sse_session_impl(
-        url, policy_path, integrity, pin_dns=pin_dns
+        url, policy_path, integrity, pin_dns=pin_dns, agent_id=agent_id
     ) as session:
         yield session

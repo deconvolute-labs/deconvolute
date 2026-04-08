@@ -6,11 +6,7 @@ import celpy
 from deconvolute.core.mcp_session import MCPSessionRegistry
 from deconvolute.core.types import ToolInterface
 from deconvolute.errors import TransportSpoofingError
-from deconvolute.models.policy import (
-    CompiledRule,
-    PolicyAction,
-    SecurityPolicy,
-)
+from deconvolute.models.policy import CompiledRule, PolicyAction, SecurityPolicy
 from deconvolute.models.security import (
     SecurityComponent,
     SecurityResult,
@@ -32,13 +28,15 @@ class MCPFirewall:
     3. Guards tool execution against Policy and Registry state (Enforcement).
     """
 
-    def __init__(self, policy: SecurityPolicy) -> None:
+    def __init__(self, policy: SecurityPolicy, agent_id: str | None = None) -> None:
         """
         Args:
             policy: The loaded and validated SecurityPolicy object.
+            agent_id: An optional identifier for the agent using this firewall.
+                Propagated to every audit event and pinned tool record.
         """
         self.policy = policy
-        self.registry = MCPSessionRegistry()
+        self.registry = MCPSessionRegistry(agent_id=agent_id)
         self.server_name: str | None = None
         self._compiled_rules: list[CompiledRule] = []
 

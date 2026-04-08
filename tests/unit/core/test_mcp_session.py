@@ -6,6 +6,7 @@ import pytest
 
 from deconvolute.constants import DECONVOLUTE_API_KEY
 from deconvolute.core.mcp_session import MCPSessionRegistry
+from deconvolute.core.types import ToolInterface
 from deconvolute.errors import MCPSessionError
 from deconvolute.models.observability import SecurityEventType
 
@@ -201,12 +202,17 @@ class TestMCPSessionRegistry:
                     expected_hash = registry.compute_hash(tool_def)
 
                     mock_pin.assert_called_once_with(
-                        "test_server", "1.0.0", "fresh_tool", expected_hash
+                        "test_server",
+                        "1.0.0",
+                        "fresh_tool",
+                        expected_hash,
+                        agent_id=None,
                     )
                     mock_log.assert_called_once()
 
                     event_type = mock_log.call_args[1]["event_type"]
                     assert event_type == SecurityEventType.TOOL_PINNED
+                    assert mock_log.call_args[1]["agent_id"] is None
 
     def test_verify_logs_unregistered_tool(self, registry):
         """Test that attempting to verify an unknown tool audits an event."""
@@ -236,6 +242,19 @@ class TestMCPSessionRegistry:
                 mock_log.call_args[1]["event_type"]
                 == SecurityEventType.INTEGRITY_VIOLATION
             )
+
+    def test_register_passes_agent_id_to_store(self):
+        """Test that agent_id is forwarded to pin_tool and log_audit_event."""
+        registry = MCPSessionRegistry("test_server", "1.0.0", agent_id="agent-42")
+        tool_def: ToolInterface = {"name": "tracked_tool", "description": "new"}
+
+        with patch.object(registry.store, "get_pinned_hash", return_value=None):
+            with patch.object(registry.store, "pin_tool") as mock_pin:
+                with patch.object(registry.store, "log_audit_event") as mock_log:
+                    registry.register(tool_def)
+
+                    assert mock_pin.call_args[1]["agent_id"] == "agent-42"
+                    assert mock_log.call_args[1]["agent_id"] == "agent-42"
 
     def test_verify_current_def_none_match(self, registry):
         """

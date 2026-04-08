@@ -70,9 +70,27 @@ def test_pin_tool_inserts_new_record(store):
         assert row is not None
         assert row["schema_hash"] == "hash123"
         assert row["updated_from_remote"] == 0
+        assert row["agent_id"] is None
         # Check timestamp
         timestamp = datetime.fromisoformat(row["discovered_at"])
         assert timestamp.tzinfo is not None  # Aware datetime (UTC)
+
+
+def test_pin_tool_stores_agent_id(store):
+    """Ensures that agent_id is stored when provided."""
+    store.pin_tool("server_one", "1.0.0", "my_tool", "hash123", agent_id="agent-42")
+
+    with sqlite3.connect(store.db_path) as conn:
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+        cursor.execute(
+            "SELECT agent_id FROM pinned_tools WHERE server_name='server_one' AND "
+            "server_version='1.0.0' AND tool_name='my_tool'"
+        )
+        row = cursor.fetchone()
+
+        assert row is not None
+        assert row["agent_id"] == "agent-42"
 
 
 def test_pin_tool_updates_existing_record(store):
@@ -134,6 +152,22 @@ def test_log_audit_event(store):
         assert json.loads(row["payload"]) == payload
         assert row["sync_status"] == "PENDING"
         assert row["retry_count"] == 0
+        assert row["agent_id"] is None
+
+
+def test_log_audit_event_stores_agent_id(store):
+    """Ensures agent_id is stored in audit_queue when provided."""
+    payload = {"user": "Alice", "action": "test"}
+    store.log_audit_event("TEST_EVENT", payload, agent_id="my-agent")
+
+    with sqlite3.connect(store.db_path) as conn:
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+        cursor.execute("SELECT agent_id FROM audit_queue")
+        row = cursor.fetchone()
+
+        assert row is not None
+        assert row["agent_id"] == "my-agent"
 
 
 def test_audit_queue_truncation(store):

@@ -497,6 +497,7 @@ async def secure_stdio_session_impl(
     server_parameters: Any,
     policy_path: str,
     integrity: IntegrityLevel = "snapshot",
+    agent_id: str | None = None,
 ) -> AsyncIterator[Any]:
     """
     Implementation for the secure stdio transport wrapper.
@@ -518,6 +519,7 @@ async def secure_stdio_session_impl(
                 policy_path=policy_path,
                 integrity=integrity,
                 transport_origin=origin,
+                agent_id=agent_id,
             )
             yield guarded_session
 
@@ -528,6 +530,7 @@ async def secure_sse_session_impl(
     policy_path: str,
     integrity: IntegrityLevel = "snapshot",
     pin_dns: bool = True,
+    agent_id: str | None = None,
 ) -> AsyncIterator[Any]:
     """
     Implementation for the secure sse transport wrapper with transparent DNS pinning.
@@ -633,5 +636,6 @@ async def secure_sse_session_impl(
                 policy_path=policy_path,
                 integrity=integrity,
                 transport_origin=origin,
+                agent_id=agent_id,
             )
             yield guarded_session
