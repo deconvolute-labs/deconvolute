@@ -183,9 +183,9 @@ class MCPSessionRegistry:
             # First time seeing this tool across ANY session for this server.
             logger.info(f"Discovering and pinning new tool: {name}")
             self.store.pin_tool(
-                self.server_name, 
-                self.server_version, 
-                name, 
+                self.server_name,
+                self.server_version,
+                name,
                 tool_hash,
                 agent_id=self.agent_id,
             )

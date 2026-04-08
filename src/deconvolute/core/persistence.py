@@ -154,8 +154,13 @@ class SQLiteStore:
                     agent_id=excluded.agent_id
             """,
                 (
-                    server_name, server_version, tool_name,
-                    schema_hash, now, from_remote, agent_id,
+                    server_name,
+                    server_version,
+                    tool_name,
+                    schema_hash,
+                    now,
+                    from_remote,
+                    agent_id,
                 ),
             )
             conn.commit()

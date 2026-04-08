@@ -202,9 +202,9 @@ class TestMCPSessionRegistry:
                     expected_hash = registry.compute_hash(tool_def)
 
                     mock_pin.assert_called_once_with(
-                        "test_server", 
-                        "1.0.0", 
-                        "fresh_tool", 
+                        "test_server",
+                        "1.0.0",
+                        "fresh_tool",
                         expected_hash,
                         agent_id=None,
                     )
