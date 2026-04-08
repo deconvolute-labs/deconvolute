@@ -14,7 +14,7 @@ def test_agent_id_written_to_db(isolated_cache_dir):
     present in both pinned_tools and audit_queue.
     """
     policy = SecurityPolicy(
-        version="1.0",
+        version="2.0",
         default_action=PolicyAction.ALLOW,
         servers={"test-server": ServerPolicy(tools=[])},
     )
@@ -45,4 +45,5 @@ def test_agent_id_written_to_db(isolated_cache_dir):
         )
         row = cursor.fetchone()
         assert row is not None, "TOOL_PINNED event should be logged"
+        assert row["agent_id"] == "my-agent"
         assert row["agent_id"] == "my-agent"
