@@ -1,3 +1,23 @@
+## [0.1.4] - 2026-04-08
+
+### 🚀 Features
+
+- Add agent ID for tracking of connected agents
+
+### 📚 Documentation
+
+- Update readme
+- Add proxy section and update introduction
+
+### ⚙️ Miscellaneous Tasks
+
+- Bump pyjwt version to fix CVE-2026-32597
+- Bump requests to fix CVE-2026-25645
+- Add pre-check to audit workflow
+- Bump dependencies to pass audit workflow
+- Update audit workflow
+- Make scanner dependencies optional
+
 ## [0.1.3] - 2026-03-11
 
 ### 🚀 Features
@@ -7,6 +27,8 @@
 ### ⚙️ Miscellaneous Tasks
 
 - Add nightly dependency audit
+- Prepare v0.1.3
+
 ## [0.1.2] - 2026-03-08
 
 ### 🐛 Bug Fixes
@@ -16,6 +38,7 @@
 ### ⚙️ Miscellaneous Tasks
 
 - Prepare v0.1.2
+
 ## [0.1.1] - 2026-03-07
 
 ### 🚀 Features
@@ -30,6 +53,7 @@
 ### ⚙️ Miscellaneous Tasks
 
 - Prepare v0.1.1
+
 ## [0.1.0b2] - 2026-03-03
 
 ### 🚀 Features
@@ -47,6 +71,7 @@
 - Fix workflow
 - Update url
 - Prepare v0.1.0b2
+
 ## [0.1.0b1] - 2026-02-25
 
 ### 🚀 Features
@@ -56,6 +81,7 @@
 ### ⚙️ Miscellaneous Tasks
 
 - Prepare v0.1.0b1
+
 ## [0.1.0a15] - 2026-02-24
 
 ### 🚀 Features
@@ -76,6 +102,7 @@
 - Fix bugs late wrapping and conditional discovery
 - Handle pagination of tools correctly
 - Prepare v0.1.0a15
+
 ## [0.1.0a14] - 2026-02-15
 
 ### 🚀 Features
@@ -85,6 +112,7 @@
 ### ⚙️ Miscellaneous Tasks
 
 - Prepare v0.1.0a14
+
 ## [0.1.0a13] - 2026-02-15
 
 ### 🚀 Features
@@ -98,6 +126,7 @@
 ### ⚙️ Miscellaneous Tasks
 
 - Prepare v0.1.0a13
+
 ## [0.1.0a12] - 2026-02-14
 
 ### 🚀 Features
@@ -112,6 +141,7 @@
 
 - Fix logic to register tools on first use
 - Prepare v0.1.0a12
+
 ## [0.1.0a11] - 2026-02-13
 
 ### 🚀 Features
@@ -124,6 +154,7 @@
 
 - Fix warnings in test
 - Prepare v0.1.0a11
+
 ## [0.1.0a10] - 2026-02-12
 
 ### 🚀 Features
@@ -142,6 +173,7 @@
 - Rename guard to llm_guard (#14)
 - Refactor guards (#16)
 - Prepare v0.1.0a10
+
 ## [0.1.0a9] - 2026-02-01
 
 ### 🚀 Features
@@ -151,6 +183,7 @@
 ### ⚙️ Miscellaneous Tasks
 
 - Prepare v0.1.0a9
+
 ## [0.1.0a8] - 2026-01-29
 
 ### 🚀 Features
@@ -166,6 +199,7 @@
 
 - Update badges
 - Prepare v0.1.0a8
+
 ## [0.1.0a7] - 2026-01-22
 
 ### 🚀 Features
@@ -178,6 +212,7 @@
 - Remove local security policy to inherit from org
 - Split default detectors into guard and scan (#8)
 - Prepare v0.1.0a7
+
 ## [0.1.0a6] - 2026-01-20
 
 ### 🚀 Features
@@ -189,6 +224,7 @@
 
 - Refactor of detectors into namespaces (#6)
 - Prepare v0.1.0a6
+
 ## [0.1.0a5] - 2026-01-16
 
 ### 🚀 Features
@@ -200,6 +236,7 @@
 - Refactor into new structure and add better tests (#4)
 - Update links
 - Prepare release 0.1.0a5
+
 ## [0.1.0a4] - 2026-01-13
 
 ### 🚀 Features
@@ -210,6 +247,7 @@
 
 - Improve workflow
 - Prepare v0.1.0a4
+
 ## [0.1.0a3] - 2026-01-06
 
 ### 📚 Documentation
@@ -220,6 +258,7 @@
 
 - Fix warning for init commit message
 - Prepare v0.1.0a3
+
 ## [0.1.0a2] - 2026-01-06
 
 ### 🐛 Bug Fixes
@@ -230,6 +269,7 @@
 
 - Add summary step (#3)
 - Prepare v0.1.0a2
+
 ## [0.1.0a1] - 2026-01-05
 
 ### 🚀 Features
