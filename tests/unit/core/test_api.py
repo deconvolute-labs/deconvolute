@@ -4,12 +4,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from deconvolute import DeconvoluteError
-from deconvolute.core.api import (
-    _resolve_configuration,
-    a_scan,
-    llm_guard,
-    scan,
-)
+from deconvolute.core.api import _resolve_configuration, a_scan, llm_guard, scan
 from deconvolute.models.security import (
     SecurityComponent,
     SecurityResult,
@@ -287,4 +282,5 @@ async def test_secure_sse_session_passes_pin_dns():
             "deconvolute_policy.yaml",
             "snapshot",
             pin_dns=False,
+            agent_id=None,
         )

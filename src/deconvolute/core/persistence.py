@@ -76,6 +76,7 @@ class SQLiteStore:
                     schema_hash TEXT,
                     discovered_at TIMESTAMP,
                     updated_from_remote BOOLEAN,
+                    agent_id TEXT,
                     PRIMARY KEY (server_name, server_version, tool_name)
                 )
             """)
@@ -88,7 +89,8 @@ class SQLiteStore:
                     payload TEXT,
                     created_at TIMESTAMP,
                     sync_status TEXT DEFAULT 'PENDING',
-                    retry_count INTEGER DEFAULT 0
+                    retry_count INTEGER DEFAULT 0,
+                    agent_id TEXT
                 )
             """)
 
@@ -112,6 +114,7 @@ class SQLiteStore:
         tool_name: str,
         schema_hash: str,
         from_remote: bool = False,
+        agent_id: str | None = None,
     ) -> None:
         """
         Updates the local integrity baseline for a specific tool.
@@ -126,6 +129,8 @@ class SQLiteStore:
             schema_hash (str): The cryptographic hash of the tool's schema.
             from_remote (bool, optional): Indicates if the hash was downloaded
                 from the platform. Defaults to False.
+            agent_id (str | None, optional): An optional identifier for the agent
+                that pinned the tool. Defaults to None.
         """
         with sqlite3.connect(self.db_path) as conn:
             cursor = conn.cursor()
@@ -133,20 +138,25 @@ class SQLiteStore:
             cursor.execute(
                 """
                 INSERT INTO pinned_tools (
-                    server_name, 
+                    server_name,
                     server_version,
-                    tool_name, 
-                    schema_hash, 
-                    discovered_at, 
-                    updated_from_remote
+                    tool_name,
+                    schema_hash,
+                    discovered_at,
+                    updated_from_remote,
+                    agent_id
                 )
-                VALUES (?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT(server_name, server_version, tool_name) DO UPDATE SET
                     schema_hash=excluded.schema_hash,
                     discovered_at=excluded.discovered_at,
-                    updated_from_remote=excluded.updated_from_remote
+                    updated_from_remote=excluded.updated_from_remote,
+                    agent_id=excluded.agent_id
             """,
-                (server_name, server_version, tool_name, schema_hash, now, from_remote),
+                (
+                    server_name, server_version, tool_name,
+                    schema_hash, now, from_remote, agent_id,
+                ),
             )
             conn.commit()
 
@@ -175,7 +185,12 @@ class SQLiteStore:
             row = cursor.fetchone()
             return row[0] if row else None
 
-    def log_audit_event(self, event_type: str, payload: dict[str, Any]) -> None:
+    def log_audit_event(
+        self,
+        event_type: str,
+        payload: dict[str, Any],
+        agent_id: str | None = None,
+    ) -> None:
         """
         Records a security event and wakes up the background sync worker.
 
@@ -183,16 +198,18 @@ class SQLiteStore:
             event_type (str): Categorizes the event (e.g. 'TOOL_PINNED').
             payload (dict): A dictionary containing the full context of the event,
                 which will be serialized to JSON.
+            agent_id (str | None, optional): An optional identifier for the agent
+                that produced the event. Defaults to None.
         """
         with sqlite3.connect(self.db_path) as conn:
             cursor = conn.cursor()
             now = datetime.now(UTC).isoformat()
             cursor.execute(
                 """
-                INSERT INTO audit_queue (event_type, payload, created_at)
-                VALUES (?, ?, ?)
+                INSERT INTO audit_queue (event_type, payload, created_at, agent_id)
+                VALUES (?, ?, ?, ?)
             """,
-                (event_type, json.dumps(payload), now),
+                (event_type, json.dumps(payload), now, agent_id),
             )
             conn.commit()
 

@@ -61,7 +61,10 @@ class MCPSessionRegistry:
     """
 
     def __init__(
-        self, server_name: str | None = None, server_version: str | None = None
+        self,
+        server_name: str | None = None,
+        server_version: str | None = None,
+        agent_id: str | None = None,
     ) -> None:
         """
         Initializes the MCP session registry.
@@ -69,9 +72,12 @@ class MCPSessionRegistry:
         Args:
             server_name (str | None): The identifier of the connected MCP server.
             server_version (str | None): The reported version of the MCP server.
+            agent_id (str | None): An optional identifier for the agent using
+                this registry. Stored with every audit event and pinned tool.
         """
         self.server_name = server_name
         self.server_version = server_version
+        self.agent_id = agent_id
         self.store = SQLiteStore()
         # The primary storage: Maps tool_name -> ToolSnapshot
         self._tools: dict[str, ToolSnapshot] = {}
@@ -176,7 +182,13 @@ class MCPSessionRegistry:
         if pinned_hash is None:
             # First time seeing this tool across ANY session for this server.
             logger.info(f"Discovering and pinning new tool: {name}")
-            self.store.pin_tool(self.server_name, self.server_version, name, tool_hash)
+            self.store.pin_tool(
+                self.server_name, 
+                self.server_version, 
+                name, 
+                tool_hash,
+                agent_id=self.agent_id,
+            )
             self.store.log_audit_event(
                 event_type=SecurityEventType.TOOL_PINNED,
                 payload={
@@ -187,6 +199,7 @@ class MCPSessionRegistry:
                     "schema": tool_def,
                     "message": "New tool discovered and pinned locally.",
                 },
+                agent_id=self.agent_id,
             )
             # The baseline is the newly calculated hash
             expected_hash = tool_hash
@@ -241,6 +254,7 @@ class MCPSessionRegistry:
                     "message": "Execution attempted for a tool that was never "
                     "registered.",
                 },
+                agent_id=self.agent_id,
             )
             return False
 
@@ -274,6 +288,7 @@ class MCPSessionRegistry:
                         "Tool schema hash does not match the authoritative baseline."
                     ),
                 },
+                agent_id=self.agent_id,
             )
             return False
 
