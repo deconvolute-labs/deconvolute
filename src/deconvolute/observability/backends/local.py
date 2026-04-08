@@ -25,7 +25,12 @@ class LocalObservabilityBackend(BaseObservabilityBackend):
         self.store = SQLiteStore()
         logger.debug("Initialized LocalObservabilityBackend with SQLite storage.")
 
-    def log_event(self, event_type: str, payload: dict[str, Any]) -> None:
+    def log_event(
+        self,
+        event_type: str,
+        payload: dict[str, Any],
+        agent_id: str | None = None,
+    ) -> None:
         """
         Records a telemetry event to the database.
 
@@ -33,9 +38,13 @@ class LocalObservabilityBackend(BaseObservabilityBackend):
             event_type (str): Categorizes the event (e.g. 'SESSION_DISCOVERY',
                 'SESSION_ACCESS').
             payload (dict[str, Any]): The full contextual payload to record.
+            agent_id (str | None, optional): An optional identifier for the agent
+                that produced the event. Defaults to None.
         """
         try:
-            self.store.log_audit_event(event_type=event_type, payload=payload)
+            self.store.log_audit_event(
+                event_type=event_type, payload=payload, agent_id=agent_id
+            )
         except Exception as e:
             # We never want a failure in telemetry to crash the user's main application
             logger.error(f"Failed to write audit event '{event_type}' to SQLite: {e}")

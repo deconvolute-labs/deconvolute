@@ -270,7 +270,9 @@ class MCPProxy:
                 server_info=server_details,
             )
             backend.log_event(
-                TelemetryEventType.SESSION_DISCOVERY, event.model_dump(mode="json")
+                TelemetryEventType.SESSION_DISCOVERY,
+                event.model_dump(mode="json"),
+                agent_id=self._firewall.registry.agent_id,
             )
 
         # Reconstruct the result
