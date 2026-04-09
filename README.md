@@ -7,7 +7,7 @@
 [![License](https://img.shields.io/pypi/l/deconvolute.svg)](https://pypi.org/project/deconvolute/)
 [![PyPI version](https://img.shields.io/pypi/v/deconvolute.svg?color=green)](https://pypi.org/project/deconvolute/)
 [![Supported Python versions](https://img.shields.io/badge/python->=3.11-blue.svg?)](https://pypi.org/project/deconvolute/)
-[![Supported MCP SDK](https://img.shields.io/badge/MCP_SDK-1.26.0-blue.svg)](https://pypi.org/project/mcp/)
+[![Supported MCP SDK](https://img.shields.io/badge/MCP_SDK-1.27.0-blue.svg)](https://pypi.org/project/mcp/)
 [![Documentation](https://img.shields.io/badge/docs-sdk-blue.svg)](https://docs.deconvolutelabs.com)
 
 <h3>
