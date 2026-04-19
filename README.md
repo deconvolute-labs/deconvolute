@@ -3,7 +3,6 @@
 **Policy-as-code enforcement and observability for MCP tool calls.**
 
 [![CI](https://github.com/deconvolute-labs/deconvolute/actions/workflows/ci.yml/badge.svg)](https://github.com/deconvolute-labs/deconvolute/actions/workflows/ci.yml)
-[![Audit](https://img.shields.io/github/actions/workflow/status/deconvolute-labs/deconvolute/nightly-audit.yml?label=Dependencies%20Audited)](https://github.com/deconvolute-labs/deconvolute/actions/workflows/nightly-audit.yml)
 [![License](https://img.shields.io/pypi/l/deconvolute.svg)](https://pypi.org/project/deconvolute/)
 [![PyPI version](https://img.shields.io/pypi/v/deconvolute.svg?color=green)](https://pypi.org/project/deconvolute/)
 [![Supported Python versions](https://img.shields.io/badge/python->=3.11-blue.svg?)](https://pypi.org/project/deconvolute/)
