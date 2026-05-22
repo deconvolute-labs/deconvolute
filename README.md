@@ -5,6 +5,7 @@
 [![CI](https://github.com/deconvolute-labs/deconvolute/actions/workflows/ci.yml/badge.svg)](https://github.com/deconvolute-labs/deconvolute/actions/workflows/ci.yml)
 [![License](https://img.shields.io/pypi/l/deconvolute.svg)](https://pypi.org/project/deconvolute/)
 [![PyPI version](https://img.shields.io/pypi/v/deconvolute.svg?color=green)](https://pypi.org/project/deconvolute/)
+[![PyPI downloads](https://static.pepy.tech/badge/deconvolute)](https://pepy.tech/project/deconvolute)
 [![Supported Python versions](https://img.shields.io/badge/python->=3.11-blue.svg?)](https://pypi.org/project/deconvolute/)
 [![Supported MCP SDK](https://img.shields.io/badge/MCP_SDK-1.27.0-blue.svg)](https://pypi.org/project/mcp/)
 [![Documentation](https://img.shields.io/badge/docs-sdk-blue.svg)](https://docs.deconvolutelabs.com)
