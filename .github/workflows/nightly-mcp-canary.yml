@@ -1,9 +1,7 @@
 name: Nightly MCP Canary
 
 on:
-  schedule:
-    # Runs at 02:00 UTC every day
-    - cron: '0 2 * * *'
+  # Disabled on purpose
   workflow_dispatch: # Allows manual triggering
 
 jobs:
